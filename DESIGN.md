@@ -351,13 +351,24 @@ legibility at the size they are actually used: a gavel is a squiggle at 14px, so
 marked with a courthouse instead.
 
 ### Sign in / Create account
-A single component drives both (`components/auth/AuthForm.tsx`). The screen sits on the
-full-bleed `primary` navy with two soft tonal washes, the scales mark in gold above the
-heading, and one white Level-3 card holding exactly two fields — username and password.
-A leading glyph anchors each field; the password has a reveal toggle at 48px. Validation
-runs on the same Zod schema the server uses, so the message a user sees is the message the
-API would have returned. Failures render inline in an `error-container` strip, never as a
-toast that can be missed.
+A single component drives both (`components/auth/AuthForm.tsx`) on a two-panel screen: a
+pale `primary-fixed-dim` brand panel carrying the mark, the headline and three plain
+statements of what the app does, beside a deep navy form panel holding exactly two fields.
+Below `lg` the brand panel drops away and the navy panel takes the whole screen with the
+mark moved inline above the heading.
+
+**The auth screen does not follow the theme.** Both panels are pinned — the pale side to the
+`*-fixed` tokens, the dark side to explicit values — so sign-in looks identical in light and
+dark. This is deliberate: when the panels were built from theme tokens, dark mode inverted
+the panel and its contents independently and the supporting text came out pale-on-pale.
+Fields on the dark panel use `.field-dark`, and `<Field tone="onDark">` re-tones the label,
+hint, error and required marker together.
+
+The call to action is the pale blue against the navy, and the cross-link is the gold —
+the only two accents on the screen, so there is never a question about where to press.
+Validation runs on the same Zod schema the server uses, so the message a user sees is the
+message the API would have returned, and failures render inline rather than as a toast that
+can be missed.
 
 ### Appearance control
 Light / Dark / System, as a three-way segmented track in Chamber settings. The choice is

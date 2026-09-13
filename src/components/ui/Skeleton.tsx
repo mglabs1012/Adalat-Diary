@@ -1,4 +1,4 @@
-export function CaseCardSkeleton() {
+function CaseCardSkeleton() {
   return (
     <div className="card flex gap-space-md p-space-base">
       <div className="skeleton h-14 w-12 shrink-0 rounded" />

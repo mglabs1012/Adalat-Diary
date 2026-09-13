@@ -11,7 +11,7 @@ const SessionContext = createContext<ClientSession | null>(null);
 
 /**
  * The session is already resolved in the (app) server layout, so it is handed
- * down through context rather than re-fetched from /api/auth/me on the client.
+ * down through context rather than re-fetched on the client.
  * One fewer request on every cold start.
  */
 export function SessionProvider({

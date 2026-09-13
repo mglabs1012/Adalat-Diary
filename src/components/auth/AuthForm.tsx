@@ -38,9 +38,11 @@ const COPY = {
 
 /**
  * Login and signup differ only in copy and endpoint, so they share a component.
- * The surface behind it flips at `lg` — navy on a phone, the app's own surface
- * next to the brand panel on desktop — which is why the type colours are
- * responsive rather than fixed.
+ *
+ * The panel behind this form is a fixed deep navy in both themes, so the type
+ * and field colours are pinned rather than taken from the theme tokens —
+ * otherwise dark mode inverts the panel and the form separately and you get
+ * light text on a light ground.
  */
 export function AuthForm({ mode }: { mode: Mode }) {
   const copy = COPY[mode];
@@ -106,31 +108,30 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <div className="flex flex-col gap-space-xl py-space-3xl">
-      <header className="flex flex-col items-center gap-space-md text-center lg:items-start lg:text-left">
-        <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/10 text-secondary-fixed-dim ring-1 ring-white/15 lg:hidden">
-          <Icon name="scale" size={32} />
-        </span>
-        <div className="flex flex-col gap-space-xxs">
-          <h1 className="font-display text-display-mobile text-on-primary lg:text-display-lg lg:text-primary">
+      <header className="flex flex-col gap-space-lg">
+        {/* The brand mark only appears here when the left panel is gone. */}
+        <div className="flex items-center gap-space-sm lg:hidden">
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-white/10 text-secondary-fixed-dim ring-1 ring-white/15">
+            <Icon name="scale" size={24} />
+          </span>
+          <span className="font-display text-headline-sm text-[#eef1f9]">Adalat Diary</span>
+        </div>
+
+        <div className="flex flex-col gap-space-xs">
+          <h1 className="font-display text-display-mobile leading-tight text-[#eef1f9] lg:text-display-lg">
             {copy.heading}
           </h1>
-          <p className="text-body-md text-primary-fixed-dim lg:text-body-lg lg:text-on-surface-variant">
-            {copy.sub}
-          </p>
+          <p className="text-body-lg text-[#b3bccd]">{copy.sub}</p>
         </div>
       </header>
 
-      {/* A raised card on navy; plain fields on the desktop surface. */}
-      <form
-        onSubmit={onSubmit}
-        noValidate
-        className="flex flex-col gap-space-base rounded-xl bg-surface-container-lowest p-space-lg shadow-e3 lg:bg-transparent lg:p-0 lg:shadow-none"
-      >
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-space-base">
         <Field
           label="Username"
           required
           error={errors.username}
           hint={mode === 'signup' ? 'Letters, numbers, dot, underscore or hyphen' : undefined}
+          tone="onDark"
         >
           {(ids) => (
             <TextInput
@@ -148,6 +149,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
               spellCheck={false}
               enterKeyHint="next"
               placeholder="adv.garvit"
+              className="field-dark"
+              iconClassName="text-[#8e99ad]"
             />
           )}
         </Field>
@@ -157,6 +160,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           required
           error={errors.password}
           hint={mode === 'signup' ? 'At least 8 characters' : undefined}
+          tone="onDark"
         >
           {(ids) => (
             <div className="relative">
@@ -173,13 +177,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 enterKeyHint="go"
                 placeholder="••••••••"
-                className="pr-12"
+                className="field-dark pr-12"
+                iconClassName="text-[#8e99ad]"
               />
               <button
                 type="button"
                 onClick={() => setReveal((r) => !r)}
                 aria-label={reveal ? 'Hide password' : 'Show password'}
-                className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container"
+                className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[#8e99ad] transition-colors hover:bg-white/10 hover:text-[#eef1f9]"
               >
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={18} />
               </button>
@@ -190,7 +195,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {errors.form ? (
           <p
             role="alert"
-            className="flex items-start gap-space-xs rounded bg-error-container px-space-md py-space-sm text-body-sm text-on-error-container"
+            className="flex items-start gap-space-sm rounded bg-[#93000a] px-space-md py-space-sm text-body-sm text-[#ffdad6]"
           >
             <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
             {errors.form}
@@ -204,17 +209,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
           pill
           loading={busy}
           icon={mode === 'signup' ? 'add' : undefined}
-          className="mt-space-xs"
+          className="mt-space-xs bg-primary-fixed-dim text-on-primary-fixed hover:bg-primary-fixed"
         >
           {busy ? copy.busy : copy.cta}
         </Button>
       </form>
 
-      <p className="text-center text-body-md text-primary-fixed-dim lg:text-left lg:text-on-surface-variant">
+      <p className="text-body-md text-[#b3bccd]">
         {copy.footer}{' '}
         <Link
           href={copy.footerHref}
-          className="font-semibold text-secondary-fixed-dim underline-offset-4 hover:underline lg:text-secondary"
+          className="font-semibold text-secondary-fixed-dim underline-offset-4 hover:underline"
         >
           {copy.footerLink}
         </Link>

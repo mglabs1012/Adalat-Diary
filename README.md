@@ -170,6 +170,87 @@ pending writes.
 
 ---
 
+## Deploying to Vercel
+
+Next.js is Vercel's own framework, so there is no adapter and no `vercel.json` — the
+defaults are correct. Four steps:
+
+### 1. Push to GitHub
+
+```bash
+git add -A
+git commit -m "Adalat Diary"
+git remote add origin https://github.com/<you>/adalat-diary.git
+git push -u origin master
+```
+
+`.env.local` is gitignored and must stay that way — your database password lives in it.
+Verify before pushing:
+
+```bash
+git ls-files | grep -c "^.env.local$"   # must print 0
+```
+
+### 2. Open MongoDB Atlas to Vercel
+
+Vercel's serverless functions do not have fixed IP addresses, so an allowlist of your home
+IP will fail in production. In Atlas → **Network Access** → Add IP Address, choose
+**Allow access from anywhere** (`0.0.0.0/0`).
+
+That is safe here because the connection string itself is the credential — keep it out of
+the repo and rotate it if it ever leaks. If you would rather not open it, Atlas private
+endpoints require a paid Vercel plan.
+
+### 3. Import the project
+
+On [vercel.com/new](https://vercel.com/new), import the repository. Framework preset,
+build command and output directory are all detected automatically. Before the first deploy,
+add the environment variables (Settings → Environment Variables), for **Production**,
+**Preview** and **Development**:
+
+| Variable | Value | Notes |
+| --- | --- | --- |
+| `MONGODB_URI` | your Atlas connection string | Percent-encode the password if it contains `@ : / ? # [ ] %` |
+| `MONGODB_DB` | `adalat_diary` | |
+| `AUTH_SECRET` | a 48-byte random string | **Required** — the app refuses to boot without it in production |
+| `NEXT_PUBLIC_APP_NAME` | `Adalat Diary` | Shown in the manifest and share sheet |
+| `NEXT_PUBLIC_APP_URL` | `https://<your-app>.vercel.app` | Set after the first deploy, then redeploy |
+| `LOG_LEVEL` | `info` | `debug` if you are chasing something |
+
+Generate the secret:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+`NEXT_PUBLIC_*` values are inlined into the client bundle at build time, so changing either
+of them needs a redeploy, not just a restart.
+
+### 4. Verify the deployment
+
+```
+https://<your-app>.vercel.app/api/health
+```
+
+`{"status":"ok", …}` means the function reached Atlas. If it returns `503`, the JSON body
+carries the real driver error and the Vercel function log carries the one-line diagnosis —
+`bad auth`, IP allowlist, DNS, and so on. Then open `/signup` and create your account.
+
+### Notes
+
+- **The PWA only installs from the deployed site.** The service worker is registered only
+  when `NODE_ENV=production`, so "Add to Home screen" appears on the Vercel URL, not on
+  `localhost`. HTTPS is required, which Vercel gives you.
+- **Every route is dynamic.** The diary is per-user and cookie-scoped, so nothing is
+  statically cached — no stale docket after a write, and no ISR to configure.
+- **Cold starts.** The Mongoose connection is cached on `globalThis`, so a warm function
+  reuses its pool instead of opening a new one per request. `maxPoolSize` is 10; if you ever
+  run a large number of concurrent functions, lower it rather than raising Atlas's limit.
+- **Region.** Put the Vercel function region near your Atlas cluster (Settings → Functions)
+  — for an India cluster, `bom1`. A mismatched region adds a round trip to every query.
+
+---
+
 ## Logging & diagnostics
 
 Every log line is tagged with its subsystem and passed through `redact()`

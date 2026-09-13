@@ -246,6 +246,25 @@
     filter: invert(1);
   }
 
+  /* Auth sits on a fixed dark panel in BOTH themes, so its inputs cannot use
+     the theme tokens — they would invert with everything else. */
+  .field-dark {
+    background-color: rgb(26 34 51);
+    border-color: rgb(255 255 255 / 0.14);
+    color: rgb(238 241 249);
+  }
+  .field-dark::placeholder {
+    color: rgb(179 188 205 / 0.55);
+  }
+  .field-dark:hover:not(:disabled):not(:focus) {
+    border-color: rgb(255 255 255 / 0.3);
+  }
+  .field-dark:focus {
+    background-color: rgb(20 27 43);
+    border-color: rgb(181 200 227);
+    box-shadow: 0 0 0 3px rgb(181 200 227 / 0.18);
+  }
+
   .field-textarea {
     @apply resize-y leading-relaxed;
     min-height: 6rem;

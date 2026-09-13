@@ -17,7 +17,7 @@ function escapeRegex(input: string): string {
 }
 
 /** Turns the UI filter chips into an index-friendly Mongo query. */
-export function buildQuery(ownerId: string, filter: CaseFilter, q?: string, stage?: string) {
+function buildQuery(ownerId: string, filter: CaseFilter, q?: string, stage?: string) {
   const query: FilterQuery<CaseDoc> = { ownerId };
   const today = startOfDay();
 

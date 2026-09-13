@@ -78,10 +78,25 @@ interface FieldProps {
   hint?: string;
   /** Rendered right of the label — a counter, or an optional marker. */
   meta?: ReactNode;
+  /**
+   * `onDark` re-tones the label, hint, error and required marker together.
+   * The auth screens sit on a fixed deep-navy panel where the theme's
+   * on-surface colours do not apply.
+   */
+  tone?: 'default' | 'onDark';
   children: (ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode;
 }
 
-export function Field({ label, required, error, hint, meta, children }: FieldProps) {
+export function Field({
+  label,
+  required,
+  error,
+  hint,
+  meta,
+  tone = 'default',
+  children,
+}: FieldProps) {
+  const dark = tone === 'onDark';
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
@@ -90,11 +105,14 @@ export function Field({ label, required, error, hint, meta, children }: FieldPro
   return (
     <div className="flex min-w-0 flex-col gap-space-xs">
       <div className="flex items-baseline justify-between gap-space-sm">
-        <label htmlFor={id} className="text-label-md text-on-surface-variant">
+        <label
+          htmlFor={id}
+          className={cn('text-label-md', dark ? 'text-[#b3bccd]' : 'text-on-surface-variant')}
+        >
           {label}
           {required ? (
             <>
-              <span aria-hidden className="ml-0.5 text-error">
+              <span aria-hidden className={cn('ml-0.5', dark ? 'text-[#ffb4ab]' : 'text-error')}>
                 *
               </span>
               <span className="sr-only"> (required)</span>
@@ -107,12 +125,22 @@ export function Field({ label, required, error, hint, meta, children }: FieldPro
       {children({ id, describedBy, invalid: Boolean(error) })}
 
       {error ? (
-        <p id={errorId} role="alert" className="flex items-start gap-1 text-label-md text-error">
+        <p
+          id={errorId}
+          role="alert"
+          className={cn(
+            'flex items-start gap-1 text-label-md',
+            dark ? 'text-[#ffb4ab]' : 'text-error',
+          )}
+        >
           <Icon name="alert" size={13} className="mt-0.5 shrink-0" />
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-label-md text-on-surface-variant/80">
+        <p
+          id={hintId}
+          className={cn('text-label-md', dark ? 'text-[#8e99ad]' : 'text-on-surface-variant/80')}
+        >
           {hint}
         </p>
       ) : null}
@@ -128,8 +156,13 @@ export function TextInput({
   ids,
   className,
   leading,
+  iconClassName,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { ids: Ids; leading?: IconName }) {
+}: InputHTMLAttributes<HTMLInputElement> & {
+  ids: Ids;
+  leading?: IconName;
+  iconClassName?: string;
+}) {
   const input = (
     <input
       {...props}
@@ -146,7 +179,10 @@ export function TextInput({
       <Icon
         name={leading}
         size={17}
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+        className={cn(
+          'pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant',
+          iconClassName,
+        )}
       />
       {input}
     </div>

@@ -106,33 +106,3 @@ export function ButtonLink({
   );
 }
 
-/** Square icon-only control with an accessible name. */
-export function IconButton({
-  icon,
-  label,
-  variant = 'ghost',
-  active,
-  className,
-  ...props
-}: {
-  icon: IconName;
-  label: string;
-  variant?: ButtonVariant;
-  active?: boolean;
-} & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...props}
-      aria-label={label}
-      aria-pressed={active}
-      title={label}
-      className={cn(
-        'press inline-flex h-10 w-10 items-center justify-center rounded transition-colors disabled:pointer-events-none disabled:opacity-55',
-        active ? 'bg-secondary-fixed text-on-secondary-fixed-variant' : VARIANT[variant],
-        className,
-      )}
-    >
-      <Icon name={icon} size={19} />
-    </button>
-  );
-}
