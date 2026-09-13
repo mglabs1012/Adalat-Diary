@@ -29,18 +29,12 @@ Design language and tokens live in [DESIGN.md](DESIGN.md).
 
 ```bash
 npm install
-cp .env.example .env.local     # add your MONGODB_URI and AUTH_SECRET
+cp .env.example .env.local     # add your MONGODB_URI
 npm run dev                    # http://localhost:3000
 ```
 
 Open `/signup` and create your account. The diary starts empty — there is no
 sample or seed data anywhere in the app; every record you see is one you entered.
-
-Generate a session key for `AUTH_SECRET` with:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-```
 
 `MONGODB_URI` is required — the app has no fallback store and will tell you plainly if it
 cannot reach the database. Check `/api/health` to see the connection state at any time.
@@ -138,7 +132,8 @@ advocate's diary does not need one, and every extra field is another thing to ge
   `lib/auth/password.ts`). Wrong password and unknown username return the identical message,
   and a missing user still burns a decoy hash so response time reveals nothing.
 - **Sessions** are HS256 JWTs in an `httpOnly`, `sameSite=lax`, 30-day cookie
-  (`lib/auth/session.ts`). `AUTH_SECRET` is required in production.
+  (`lib/auth/session.ts`). The server derives their signing key from the required,
+  server-only MongoDB connection credential, so there is no separate auth-secret variable.
 - **`src/middleware.ts`** verifies the token on the edge before any page renders, so a
   signed-out visitor never reaches a screen that would query the database. It remembers the
   requested path in `?next=` and returns them there after login. API routes check the session
@@ -212,16 +207,9 @@ add the environment variables (Settings → Environment Variables), for **Produc
 | --- | --- | --- |
 | `MONGODB_URI` | your Atlas connection string | Percent-encode the password if it contains `@ : / ? # [ ] %` |
 | `MONGODB_DB` | `adalat_diary` | |
-| `AUTH_SECRET` | a 48-byte random string | **Required** — the app refuses to boot without it in production |
 | `NEXT_PUBLIC_APP_NAME` | `Adalat Diary` | Shown in the manifest and share sheet |
 | `NEXT_PUBLIC_APP_URL` | `https://<your-app>.vercel.app` | Set after the first deploy, then redeploy |
 | `LOG_LEVEL` | `info` | `debug` if you are chasing something |
-
-Generate the secret:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-```
 
 `NEXT_PUBLIC_*` values are inlined into the client bundle at build time, so changing either
 of them needs a redeploy, not just a restart.

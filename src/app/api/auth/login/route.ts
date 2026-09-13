@@ -3,12 +3,7 @@ import { cookies } from 'next/headers';
 import { connectDB } from '@/lib/db/mongodb';
 import { UserModel } from '@/lib/models/User';
 import { fakeVerify, verifyPassword } from '@/lib/auth/password';
-import {
-  assertSessionConfiguration,
-  SESSION_COOKIE,
-  sessionCookieOptions,
-  signSession,
-} from '@/lib/auth/session';
+import { SESSION_COOKIE, sessionCookieOptions, signSession } from '@/lib/auth/session';
 import { loginSchema } from '@/lib/validation/auth';
 import { fail, handleError, ok } from '@/lib/utils/api';
 import { logger } from '@/lib/utils/logger';
@@ -27,9 +22,6 @@ export async function POST(req: NextRequest) {
     if (!body) return fail('Invalid request body.');
 
     const { username, password } = loginSchema.parse(body);
-
-    // Fail with an actionable error before doing password work or querying DB.
-    assertSessionConfiguration();
 
     await connectDB();
 

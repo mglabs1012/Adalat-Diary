@@ -12,41 +12,22 @@ export interface SessionPayload {
 
 let cachedKey: Uint8Array | null = null;
 
-/** A safe-to-display error for a server that cannot issue session cookies. */
-export class AuthConfigurationError extends Error {
-  constructor() {
-    super('AUTH_SECRET must be set to at least 32 characters in production.');
-    this.name = 'AuthConfigurationError';
-  }
-}
-
 function secretKey(): Uint8Array {
   if (cachedKey) return cachedKey;
 
-  // Environment-variable UIs occasionally preserve pasted whitespace. It is
-  // never meaningful in a generated secret and would otherwise make a value
-  // that looks valid fail the length check (or sign different cookies).
-  const secret = process.env.AUTH_SECRET?.trim();
-  if (!secret || secret.length < 32) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new AuthConfigurationError();
-    }
-    // Dev convenience only: a fixed key so sessions survive a server restart.
-    cachedKey = new TextEncoder().encode('adalat-diary-development-secret-key-not-for-production');
-    return cachedKey;
+  /**
+   * The MongoDB URI is already mandatory and secret. Reusing it as HMAC
+   * signing material keeps sessions stable across serverless instances without
+   * requiring a second deployment variable. It is never sent to the client or
+   * logged; it only becomes a byte key in server/edge memory.
+   */
+  const databaseCredential = process.env.MONGODB_URI?.trim();
+  if (!databaseCredential) {
+    throw new Error('MONGODB_URI is required to issue a session.');
   }
 
-  cachedKey = new TextEncoder().encode(secret);
+  cachedKey = new TextEncoder().encode(databaseCredential);
   return cachedKey;
-}
-
-/**
- * Checks production session configuration before a route mutates data. In
- * particular, signup must not create an account and only then fail to issue
- * its session cookie.
- */
-export function assertSessionConfiguration(): void {
-  secretKey();
 }
 
 export async function signSession(payload: SessionPayload): Promise<string> {
