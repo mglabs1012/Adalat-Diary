@@ -1,0 +1,43 @@
+{
+  "name": "Adalat Diary — Court diary for advocates",
+  "short_name": "Adalat Diary",
+  "description": "Case records, cause lists and next dates. Works offline, syncs when you are back on a network.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f8f9ff",
+  "theme_color": "#1a2b49",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["productivity", "business", "utilities"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add a case",
+      "short_name": "New case",
+      "url": "/cases/new",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Today's cause list",
+      "short_name": "Today",
+      "url": "/cases?f=today",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Diary",
+      "short_name": "Diary",
+      "url": "/diary",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

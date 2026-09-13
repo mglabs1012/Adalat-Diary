@@ -1,0 +1,315 @@
+# Adalat Diary
+
+A court diary for a practising advocate. Case records, today's cause list, and — above all —
+**next dates**. Android-first and installable as a PWA, with a full desktop layout above
+1024px, and usable inside a courtroom with no signal.
+
+Design language and tokens live in [DESIGN.md](DESIGN.md).
+
+---
+
+## Stack
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| Framework | **Next.js 15** (App Router) + React 19 | One codebase for the Android PWA and the later web layout. Route handlers give the API without a second server. |
+| Language | **TypeScript** (strict) | The record shape is the whole product; it should be checked. |
+| Styling | **Tailwind CSS 3** with M3-Expressive tokens | Tokens declared once as channel-based CSS vars → dark theme is a variable swap, and `/opacity` still works. |
+| Type | **Poppins + Inter**, self-hosted via `next/font` | Poppins for headings and numerals, Inter for dense UI. Two families, no runtime font request. |
+| Auth | **jose** JWT in an httpOnly cookie + `node:crypto` scrypt | Edge-verifiable in middleware; scrypt is memory-hard and already in the standard library, so no bcrypt and no native build. |
+| Database | **MongoDB** via **Mongoose 8** | Connection cached across serverless invocations; compound + text indexes on the read paths. |
+| Validation | **Zod** | One schema shared by the API and the form. |
+| Data fetching | **SWR** | Stale-while-revalidate on the client, mirroring the service worker's strategy. |
+| Offline | **idb-keyval** + hand-written service worker | Write-behind outbox and a cached docket. No `next-pwa` — ~90 lines beats a build plugin here. |
+| Icons | Inline SVG (`components/ui/Icon.tsx`) | The Material Symbols font is ~2 MB and cannot be relied on offline. |
+
+---
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local     # add your MONGODB_URI and AUTH_SECRET
+npm run dev                    # http://localhost:3000
+```
+
+Open `/signup` and create your account. The diary starts empty — there is no
+sample or seed data anywhere in the app; every record you see is one you entered.
+
+Generate a session key for `AUTH_SECRET` with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+`MONGODB_URI` is required — the app has no fallback store and will tell you plainly if it
+cannot reach the database. Check `/api/health` to see the connection state at any time.
+
+### Scripts
+
+| Command | Does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` / `npm start` | Production build and serve |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint (flat config) |
+| `node scripts/generate-icons.mjs` | Regenerate the PWA icon set |
+
+---
+
+## The record
+
+Seven fields carry the diary. Everything else is optional context.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `crn` | string, **required** | Case Registration Number. Unique per chamber, uppercased. |
+| `preDate` | Date \| null | Previous hearing date. |
+| `court` | string, **required** | Forum. Free text with suggestions. |
+| `party1` | string, **required** | Petitioner / Plaintiff / Complainant. |
+| `party2` | string, **required** | Respondent / Defendant / Accused. |
+| `stage` | enum, **required** | One of twelve procedural stages. |
+| `nextDate` | Date \| null | Next date of hearing. |
+
+Plus: `caseNo`, `courtRoom`, `judge`, `purpose`, `appearingFor`, `clientName`,
+`clientPhone`, `notes`, `pinned`, `status`, `history[]`, `ownerId`, timestamps.
+
+### Indexes
+
+```js
+{ ownerId: 1, crn: 1 }                 // unique — one CRN per chamber
+{ ownerId: 1, status: 1, nextDate: 1 } // the hot path: board, diary, docket sort
+{ ownerId: 1, pinned: -1, nextDate: 1 }// pinned-first docket
+{ crn, caseNo, party1, party2, court, judge } // weighted text index for search
+```
+
+---
+
+## Responsive layout
+
+One breakpoint carries it: **`lg` (1024px)**.
+
+| | Mobile | Desktop |
+| --- | --- | --- |
+| Navigation | Bottom bar, FAB docked centre | Fixed 240px sidebar with live counts |
+| Board | Stacked, 2×2 stats | Inset hero, 1×4 stats, 1.6 : 1 split |
+| Docket / Diary | One column, stage chips behind a toggle | Two columns at `xl`, chips always visible |
+| Case detail | Scroll, floating CTA above the nav | Sticky dossier column + scrolling tabs |
+| Forms | One column, sticky action bar | Two-column grid in 46rem, inline actions |
+| Auth | Centred card on navy | Brand panel + form, side by side |
+| Sheets | Bottom sheet | Centred dialog |
+
+Screens never invent their own width — three `.page*` container classes in `globals.css`
+decide the measure, and the app bar takes a matching `width` prop so titles line up with the
+content beneath them. See [DESIGN.md](DESIGN.md) for the full rationale.
+
+---
+
+## Screens
+
+| Route | Screen | Purpose |
+| --- | --- | --- |
+| `/login` | **Sign in** | Username and password. Nothing else. |
+| `/signup` | **Create account** | Same two fields; the account is the chamber. |
+| `/` | **Board** | Today's date, four counters, today's cause list, what's coming up. |
+| `/cases` | **Docket** | Search omnibar, filter segments (All / Today / Upcoming / Passed / Disposed), stage chips, paged list. |
+| `/cases/new` | **New case** | The seven fields above the fold, chamber details collapsed. |
+| `/cases/[id]` | **Case detail** | Dossier card, next-date panel, Overview / History tabs, pin, share, edit, delete. |
+| `/cases/[id]/edit` | **Edit** | Same form, pre-filled. |
+| `/diary` | **Diary** | Every upcoming date grouped chronologically, overdue pinned on top. |
+| `/settings` | **Chamber** | Account and sign-out, light/dark/system theme, sync status, pending-write queue, install prompt, CSV export. |
+| `/offline` | **Offline** | Served by the SW only when a navigation misses the cache. Auto-returns when connectivity comes back. |
+| `not-found.tsx` | **404** | "This file is not on the record." |
+| `error.tsx` | **Error** | Leads with "your case records are safe", offers retry + digest. |
+
+The **"Record next date"** sheet on the detail screen is the app's most-used write: it moves
+`nextDate` into `preDate`, sets the new date, updates the stage, and appends to the
+procedural history in one atomic MongoDB update.
+
+---
+
+## Authentication
+
+Username and password. No email, no reset flow, no third-party identity provider — an
+advocate's diary does not need one, and every extra field is another thing to get wrong at
+6 a.m. in a bar room.
+
+- **Passwords** are hashed with `node:crypto`'s scrypt (`scrypt$<salt>$<key>`,
+  `lib/auth/password.ts`). Wrong password and unknown username return the identical message,
+  and a missing user still burns a decoy hash so response time reveals nothing.
+- **Sessions** are HS256 JWTs in an `httpOnly`, `sameSite=lax`, 30-day cookie
+  (`lib/auth/session.ts`). `AUTH_SECRET` is required in production.
+- **`src/middleware.ts`** verifies the token on the edge before any page renders, so a
+  signed-out visitor never reaches a screen that would query the database. It remembers the
+  requested path in `?next=` and returns them there after login. API routes check the session
+  themselves and answer `401` JSON rather than redirecting.
+- **Scoping**: the JWT `sub` *is* the `ownerId` on every case. There is no query in the app
+  that is not scoped by it, so one account can never read another's docket.
+
+---
+
+## Offline behaviour
+
+Three independent layers, so a dead signal degrades gracefully rather than failing:
+
+1. **Service worker** (`public/sw.js`)
+   - build assets → cache-first
+   - navigations → network-first, cache fallback, then `/offline`
+   - `GET /api/cases|stats` → stale-while-revalidate, capped at 60 entries
+
+2. **IndexedDB snapshot** (`lib/offline/cache.ts`) — the last good docket and stats, so a
+   cold offline start paints real data instead of an empty screen.
+
+3. **Write-behind outbox** (`lib/offline/outbox.ts`) — creating a case or recording a next
+   date while offline queues the request in IndexedDB. `SyncProvider` drains it in order the
+   moment the device reconnects. 4xx responses are dropped (the server will never accept
+   them); 5xx and network errors retry up to five times, preserving ordering.
+
+A banner under the app bar always states which of these is in play, with a live count of
+pending writes.
+
+---
+
+## Logging & diagnostics
+
+Every log line is tagged with its subsystem and passed through `redact()`
+(`lib/utils/logger.ts`), which strips `user:password` out of anything shaped like a
+connection string — a credential cannot reach a terminal, a log file or an error tracker.
+
+```
+› 06:38:33.147 [db] connecting { scheme: 'mongodb', hosts: [ … ], database: 'adalat_diary' }
+› 06:38:34.473 [db] ready { ms: 1312, database: 'adalat_diary', host: '…mongodb.net' }
+› 06:38:50.297 [auth] account created { username: 'garvit', id: '6aa644fa…' }
+```
+
+**Connection lifecycle** — `lib/db/mongodb.ts` logs the target before dialling (hosts and
+database only), the time taken once ready, and every Mongoose lifecycle event thereafter:
+`connected`, `reconnected`, `disconnected`, `close`, `error`.
+
+**Failures come with the fix, not just the stack.** A rejected connection is matched against
+the usual causes and logged with one actionable sentence:
+
+```
+✕ [db] connect failed { name: 'MongoServerError', code: 8000, codeName: 'AtlasError',
+                        message: 'bad auth : authentication failed' }
+✕ [db] Atlas rejected the username or password. Check Database Access in Atlas, and
+       remember the password must be percent-encoded if it contains @ : / ? # [ ] or %.
+```
+
+Covered: bad auth, unreachable server / IP allowlist, DNS and SRV failures, timeouts,
+missing permissions on the database, and placeholders left in `MONGODB_URI`.
+
+**Status codes tell the truth.** A database that is down is a `503` with *"Cannot reach the
+database right now. Your records are safe — please retry."*, not a generic `500`.
+
+**`GET /api/health`** reports the live connection state, the database and host it resolved
+to, and the ping latency — with the real driver error when it is down:
+
+```json
+{ "status": "ok", "database": { "state": "connected", "database": "adalat_diary",
+  "host": "…mongodb.net" }, "latencyMs": 52 }
+```
+
+**`LOG_LEVEL`** (`debug` | `info` | `warn` | `error`) controls verbosity — `debug` in
+development, `info` in production.
+
+**Auth events** are logged without secrets: account created, signed in, login failed (no such
+user), login failed (wrong password). Passwords never reach the logger.
+
+---
+
+## Folder structure
+
+```
+adalat-diary/
+├── DESIGN.md                     design system + product rationale
+├── next.config.mjs               security headers, SW cache policy, bundle tuning
+├── tailwind.config.ts            M3 tokens (alpha-aware rgb vars)
+├── scripts/
+│   └── generate-icons.mjs        PNG icon set, no image dependency
+├── public/
+│   ├── manifest.webmanifest      installable, with app shortcuts
+│   ├── sw.js                     service worker
+│   ├── robots.txt                a private diary: indexed by nobody
+│   └── icons/                    192 / 512 / maskable / apple-touch / svg
+└── src/
+    ├── middleware.ts             edge session check on every page request
+    ├── app/
+    │   ├── layout.tsx            shell: fonts, metadata, viewport, providers
+    │   ├── globals.css           design tokens (light + dark) and component layer
+    │   ├── (auth)/               signed-out group — no nav, no sync banner
+    │   │   ├── layout.tsx        centred navy shell
+    │   │   └── login/  signup/   → two fields each
+    │   ├── (app)/                signed-in group — session gate + nav + sync
+    │   │   ├── layout.tsx        resolves the session once, provides it downward
+    │   │   ├── page.tsx          → Board       (server-seeded)
+    │   │   ├── cases/…           → Docket, New, Detail, Edit (server-seeded)
+    │   │   └── diary/  settings/ → Diary, Chamber
+    │   ├── offline/              → offline screen
+    │   ├── not-found.tsx  error.tsx  global-error.tsx
+    │   └── api/
+    │       ├── auth/signup · login · logout · me
+    │       ├── health/route.ts           GET — can we reach the database?
+    │       ├── cases/route.ts            GET list · POST create
+    │       ├── cases/[id]/route.ts       GET · PATCH · DELETE
+    │       ├── cases/[id]/adjourn/route.ts  POST — roll the date forward
+    │       └── stats/route.ts            GET — six counters in one $facet
+    ├── components/
+    │   ├── auth/                 AuthForm (login + signup share one component)
+    │   ├── layout/               AppShell · AppBar · BottomNav · SideNav
+    │   │                         AppProviders · SyncProvider · SessionProvider
+    │   │                         Hydrate · ThemeScript
+    │   ├── screens/              one file per screen, all client components
+    │   ├── cases/                CaseCard · CaseForm · AdjournSheet · StageBadge · DateChip
+    │   └── ui/                   Button · Form (the field kit) · Icon · Sheet · Toaster
+    │                             SearchBar · SegmentedTabs · EmptyState · Skeleton
+    ├── hooks/                    useCases · useCase · useStats · useOnline
+    │                             useToast · useTheme · useInstallPrompt
+    ├── lib/
+    │   ├── api/                  fetch client · wire serializer · SWR cache keys
+    │   ├── auth/                 scrypt hashing · JWT session · server helpers
+    │   ├── data/                 the one server-side reader, shared by API + RSC
+    │   │                         plus `prefetch()` — seeding may fail without
+    │   │                         taking the screen down
+    │   ├── db/                   cached, instrumented Mongoose connection
+    │   ├── models/               Case and User schemas and indexes
+    │   ├── validation/           Zod schemas
+    │   ├── offline/              outbox + snapshot cache
+    │   ├── constants/            stages, courts, nav
+    │   └── utils/                dates, class names, API helpers, case helpers,
+    │                             redacting logger
+    └── types/                    shared record types
+```
+
+`app/` holds routing only — every screen is a component in `components/screens/`, so a route
+file stays under ten lines and the same screen can be reused in the tablet split view later.
+
+---
+
+## Performance notes
+
+- **No fetch waterfall on first paint.** Board, docket, diary and case detail read through
+  `lib/data/cases.ts` on the server and hand SWR a pre-keyed cache via `<Hydrate>`
+  (`lib/api/keys.ts` computes the same key on both sides). The first HTML frame carries real
+  case data; SWR revalidates underneath. No skeleton flash, no round trip.
+- The session is resolved **once** in the `(app)` server layout and passed down through
+  context — no `/api/auth/me` call on the client.
+- **103 kB** shared first-load JS; the heaviest screen adds ~9 kB.
+- Mongoose is server-external (`serverExternalPackages`) so the driver never reaches the
+  client bundle.
+- Every list query is index-covered and `.lean()`; board counters are a single `$facet`
+  aggregation instead of six round trips.
+- `CaseCard` is memoised — a docket re-renders on every keystroke of the search box.
+- Poppins and Inter are self-hosted at build time via `next/font` — no runtime font
+  request, no layout shift, and both render offline.
+- `jose` is imported by subpath (`jose/jwt/sign`, `jose/jwt/verify`) so the package's JWE
+  decryption — which reaches for `DecompressionStream` — never enters the edge bundle.
+- Theme is applied by an inlined pre-paint script, so a dark-mode user never sees a light flash.
+- Icons are inline paths, not a font or sprite sheet.
+- `console.*` except `error`/`warn` is stripped in production builds.
+
+## Roadmap
+
+- **Web layout.** Screens are capped at `max-w-screen-sm` today. The tablet/desktop split
+  view (cause list left, dossier right) reuses the same screen components.
+- Push reminders the evening before a listed date; document vault; fee tracking.

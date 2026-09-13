@@ -1,0 +1,302 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ─────────────────────────────────────────────────────────
+   Values mirror DESIGN.md. Declared as CSS vars so the dark scheme is a
+   token swap, not a second set of utility classes.                        */
+@layer base {
+  :root {
+    --background: 248 249 255;
+    --on-background: 15 23 42;
+    --surface: 248 249 255;
+    --surface-dim: 216 219 232;
+    --surface-bright: 255 255 255;
+    --surface-container-lowest: 255 255 255;
+    --surface-container-low: 242 244 251;
+    --surface-container: 236 239 248;
+    --surface-container-high: 229 233 244;
+    --surface-container-highest: 222 227 240;
+    --surface-variant: 222 227 240;
+    --on-surface: 15 23 42;
+    --on-surface-variant: 74 81 96;
+    --inverse-surface: 40 49 60;
+    --inverse-on-surface: 238 241 249;
+    --outline: 117 122 133;
+    --outline-variant: 199 204 216;
+
+    --primary: 26 43 73;
+    --on-primary: 255 255 255;
+    --primary-container: 11 31 51;
+    --on-primary-container: 182 199 236;
+    --primary-fixed: 215 226 255;
+    --primary-fixed-dim: 181 200 227;
+    --on-primary-fixed: 8 27 56;
+    --on-primary-fixed-variant: 54 72 94;
+    --inverse-primary: 181 200 227;
+
+    --secondary: 138 100 0;
+    --on-secondary: 255 255 255;
+    --secondary-container: 254 195 66;
+    --on-secondary-container: 74 52 0;
+    --secondary-fixed: 255 222 164;
+    --secondary-fixed-dim: 248 189 61;
+    --on-secondary-fixed: 38 25 0;
+    --on-secondary-fixed-variant: 93 66 0;
+
+    --tertiary: 79 70 229;
+    --on-tertiary: 255 255 255;
+    --tertiary-container: 237 233 254;
+    --on-tertiary-container: 51 35 204;
+
+    --error: 186 26 26;
+    --on-error: 255 255 255;
+    --error-container: 255 218 214;
+    --on-error-container: 147 0 10;
+
+    --success: 24 121 78;
+    --success-container: 220 252 231;
+    --on-success-container: 22 101 52;
+
+    --scrim: rgba(15, 23, 42, 0.45);
+    color-scheme: light;
+  }
+
+  .dark {
+    --background: 16 22 35;
+    --on-background: 228 233 245;
+    --surface: 16 22 35;
+    --surface-dim: 11 16 24;
+    --surface-bright: 43 51 70;
+    --surface-container-lowest: 22 29 44;
+    --surface-container-low: 26 34 51;
+    --surface-container: 30 39 57;
+    --surface-container-high: 37 47 67;
+    --surface-container-highest: 45 56 78;
+    --surface-variant: 45 56 78;
+    --on-surface: 228 233 245;
+    --on-surface-variant: 179 188 205;
+    --inverse-surface: 228 233 245;
+    --inverse-on-surface: 26 34 51;
+    --outline: 138 146 163;
+    --outline-variant: 65 75 96;
+
+    --primary: 181 200 227;
+    --on-primary: 11 31 51;
+    --primary-container: 36 52 79;
+    --on-primary-container: 215 226 255;
+    --inverse-primary: 26 43 73;
+
+    --secondary: 248 189 61;
+    --on-secondary: 63 45 0;
+    --secondary-container: 93 66 0;
+    --on-secondary-container: 255 222 164;
+
+    --tertiary: 195 192 255;
+    --on-tertiary: 31 19 143;
+    --tertiary-container: 51 35 204;
+    --on-tertiary-container: 226 223 255;
+
+    --error: 255 180 171;
+    --on-error: 105 0 5;
+    --error-container: 147 0 10;
+    --on-error-container: 255 218 214;
+
+    --success: 108 211 154;
+    --success-container: 20 83 45;
+    --on-success-container: 187 247 208;
+
+    --scrim: rgba(2, 6, 16, 0.62);
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Poppins owns the headline tier; everything else stays in Inter. */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-poppins), Poppins, var(--font-inter), system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  /* Statutory references, CNR/CRN codes and dates never drift in a column. */
+  .tnum,
+  input[type='date'],
+  time {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'cv05' 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--primary));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* ── Surfaces ──────────────────────────────────────────────────────────── */
+  .card {
+    @apply bg-surface-container-lowest rounded-lg shadow-e1;
+    border: 1px solid rgb(15 23 42 / 0.06);
+  }
+  .dark .card {
+    border-color: rgb(255 255 255 / 0.06);
+  }
+
+  /* ── Page containers ───────────────────────────────────────────────────────
+     Mobile is a single 16px-gutter column. Desktop widens and re-centres, but
+     never past a comfortable measure.                                       */
+  .page {
+    @apply mx-auto w-full max-w-screen-sm px-screen-margin lg:max-w-page lg:px-space-2xl;
+  }
+  .page-form {
+    @apply mx-auto w-full max-w-screen-sm px-screen-margin lg:max-w-form lg:px-space-2xl;
+  }
+  .page-narrow {
+    @apply mx-auto w-full max-w-screen-sm px-screen-margin lg:max-w-prose lg:px-space-2xl;
+  }
+  /* Clears the fixed app bar, and the bottom nav that only exists on mobile. */
+  .pt-appbar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+  }
+  .pb-nav {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+  @media (min-width: 1024px) {
+    .pb-nav {
+      padding-bottom: 3rem;
+    }
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-space-xs rounded-full;
+  }
+
+  .press {
+    @apply transition-transform duration-100 active:scale-[0.97];
+  }
+
+  /* ── Form controls ─────────────────────────────────────────────────────────
+     One geometry for every input: 48px tall, 8px radius, a hairline at rest
+     that thickens to the primary on focus. Errors recolour that same border
+     rather than adding a second one.                                        */
+  .field {
+    @apply w-full rounded bg-surface-container-low text-body-lg text-on-surface
+           transition-colors placeholder:text-on-surface-variant/55;
+    min-height: 3rem;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid rgb(var(--outline-variant) / 0.7);
+  }
+  .field:hover:not(:disabled):not(:focus) {
+    border-color: rgb(var(--outline) / 0.8);
+  }
+  .field:focus {
+    @apply bg-surface-container-lowest outline-none;
+    border-color: rgb(var(--primary));
+    box-shadow: 0 0 0 3px rgb(var(--primary) / 0.14);
+  }
+  .field:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+  .field-error {
+    border-color: rgb(var(--error));
+  }
+  .field-error:focus {
+    border-color: rgb(var(--error));
+    box-shadow: 0 0 0 3px rgb(var(--error) / 0.14);
+  }
+
+  /* Native select chrome is unstyleable, so we draw our own chevron. */
+  .field-select {
+    @apply cursor-pointer appearance-none bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234a5160'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-position: right 0.625rem center;
+    background-size: 1.25rem 1.25rem;
+  }
+  .dark .field-select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b3bccd'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  }
+
+  /* Make the whole date field open the picker, not just the tiny glyph. */
+  .field-date::-webkit-calendar-picker-indicator {
+    @apply cursor-pointer opacity-60;
+    padding: 0.25rem;
+  }
+  .field-date::-webkit-calendar-picker-indicator:hover {
+    @apply opacity-100;
+  }
+  .dark .field-date::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+
+  .field-textarea {
+    @apply resize-y leading-relaxed;
+    min-height: 6rem;
+  }
+
+  .tap {
+    @apply relative;
+  }
+  /* Every control keeps a 48px target even when drawn at 32-40px. */
+  .tap::after {
+    content: '';
+    position: absolute;
+    inset: 50% 50% 50% 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-container;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrim {
+    background: var(--scrim);
+    backdrop-filter: blur(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

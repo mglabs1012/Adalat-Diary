@@ -1,0 +1,268 @@
+'use client';
+
+import { useId, type ReactNode, type SelectHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { cn } from '@/lib/utils/cn';
+import { Icon, type IconName } from './Icon';
+
+/**
+ * The form kit. Every control shares one geometry, one focus treatment and one
+ * way of showing an error, so a form reads as a single object rather than a
+ * pile of inputs. Labels are always visible — a floating label that collapses
+ * into the field is the wrong trade when a user is copying a CRN off a docket
+ * sheet and needs to see what each box wants.
+ */
+
+/* ── Section ──────────────────────────────────────────────────────────────── */
+
+export function FormSection({
+  title,
+  icon,
+  description,
+  aside,
+  children,
+}: {
+  title: string;
+  icon?: IconName;
+  description?: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="card overflow-hidden">
+      <header className="flex items-start justify-between gap-space-md border-b border-on-surface/5 bg-surface-container-low/60 px-space-base py-space-md">
+        <div className="flex min-w-0 items-start gap-space-sm">
+          {icon ? (
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+              <Icon name={icon} size={16} />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h2 className="font-display text-headline-sm text-primary">{title}</h2>
+            {description ? (
+              <p className="mt-0.5 text-body-sm text-on-surface-variant">{description}</p>
+            ) : null}
+          </div>
+        </div>
+        {aside}
+      </header>
+      <div className="p-space-base lg:p-space-lg">{children}</div>
+    </section>
+  );
+}
+
+/** Responsive field grid: one column on a phone, two from `md` up. */
+export function FormGrid({ children, columns = 2 }: { children: ReactNode; columns?: 1 | 2 }) {
+  return (
+    <div
+      className={cn(
+        'grid gap-space-base',
+        columns === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1',
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Makes a field span the full width inside a two-column grid. */
+export function FormRow({ children }: { children: ReactNode }) {
+  return <div className="md:col-span-2">{children}</div>;
+}
+
+/* ── Field wrapper ────────────────────────────────────────────────────────── */
+
+interface FieldProps {
+  label: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  /** Rendered right of the label — a counter, or an optional marker. */
+  meta?: ReactNode;
+  children: (ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode;
+}
+
+export function Field({ label, required, error, hint, meta, children }: FieldProps) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-space-xs">
+      <div className="flex items-baseline justify-between gap-space-sm">
+        <label htmlFor={id} className="text-label-md text-on-surface-variant">
+          {label}
+          {required ? (
+            <>
+              <span aria-hidden className="ml-0.5 text-error">
+                *
+              </span>
+              <span className="sr-only"> (required)</span>
+            </>
+          ) : null}
+        </label>
+        {meta}
+      </div>
+
+      {children({ id, describedBy, invalid: Boolean(error) })}
+
+      {error ? (
+        <p id={errorId} role="alert" className="flex items-start gap-1 text-label-md text-error">
+          <Icon name="alert" size={13} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={hintId} className="text-label-md text-on-surface-variant/80">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+type Ids = { id: string; describedBy?: string; invalid: boolean };
+
+export function TextInput({
+  ids,
+  className,
+  leading,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { ids: Ids; leading?: IconName }) {
+  const input = (
+    <input
+      {...props}
+      id={ids.id}
+      aria-describedby={ids.describedBy}
+      aria-invalid={ids.invalid || undefined}
+      className={cn('field', leading && 'pl-10', ids.invalid && 'field-error', className)}
+    />
+  );
+
+  if (!leading) return input;
+  return (
+    <div className="relative">
+      <Icon
+        name={leading}
+        size={17}
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+      />
+      {input}
+    </div>
+  );
+}
+
+export function DateInput({
+  ids,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { ids: Ids }) {
+  return (
+    <input
+      {...props}
+      type="date"
+      id={ids.id}
+      aria-describedby={ids.describedBy}
+      aria-invalid={ids.invalid || undefined}
+      className={cn('field field-date tnum', ids.invalid && 'field-error', className)}
+    />
+  );
+}
+
+export function SelectInput({
+  ids,
+  className,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { ids: Ids }) {
+  return (
+    <select
+      {...props}
+      id={ids.id}
+      aria-describedby={ids.describedBy}
+      aria-invalid={ids.invalid || undefined}
+      className={cn('field field-select', ids.invalid && 'field-error', className)}
+    >
+      {children}
+    </select>
+  );
+}
+
+export function TextArea({
+  ids,
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { ids: Ids }) {
+  return (
+    <textarea
+      {...props}
+      id={ids.id}
+      aria-describedby={ids.describedBy}
+      aria-invalid={ids.invalid || undefined}
+      className={cn('field field-textarea', ids.invalid && 'field-error', className)}
+    />
+  );
+}
+
+/** Two-or-three-way choice, sized as a real tap target rather than a radio dot. */
+export function SegmentedInput<T extends string>({
+  options,
+  value,
+  onChange,
+  ids,
+}: {
+  options: readonly { id: T; label: string; hint?: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  ids?: Ids;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-describedby={ids?.describedBy}
+      className="grid gap-space-sm"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map((o) => {
+        const active = o.id === value;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.id)}
+            className={cn(
+              'flex min-h-12 flex-col items-center justify-center rounded px-space-sm py-space-sm text-label-md transition-colors',
+              active
+                ? 'bg-primary text-on-primary shadow-e1'
+                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high',
+            )}
+          >
+            {o.label}
+            {o.hint ? (
+              <span className={cn('text-label-sm font-normal', active ? 'opacity-70' : 'opacity-60')}>
+                {o.hint}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Actions ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Sticky at the bottom of the viewport on a phone (thumb reach), inline at the
+ * end of the form on desktop (where a floating bar just wastes a strip).
+ */
+export function FormActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="sticky bottom-0 z-20 -mx-screen-margin border-t border-on-surface/5 bg-surface/92 px-screen-margin py-space-md backdrop-blur-xl lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:backdrop-blur-none">
+      <div className="flex items-center gap-space-sm lg:justify-end">{children}</div>
+    </div>
+  );
+}
