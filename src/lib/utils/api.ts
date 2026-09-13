@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { getOwnerId } from '@/lib/auth/server';
+import { AuthConfigurationError } from '@/lib/auth/session';
 import { describeError, logger } from '@/lib/utils/logger';
 
 const log = logger('api');
@@ -42,6 +43,14 @@ export function handleError(err: unknown) {
   const e = err as { code?: number; message?: string };
   if (e?.code === 11000) {
     return fail('A case with this CRN already exists in your diary.', 409);
+  }
+
+  if (err instanceof AuthConfigurationError) {
+    log.error('authentication configuration is invalid', describeError(err));
+    return fail(
+      'Server authentication is not configured. Add a valid AUTH_SECRET in this Vercel environment and redeploy.',
+      500,
+    );
   }
 
   // A dead database is not a 500 — it is temporary, and the message should say

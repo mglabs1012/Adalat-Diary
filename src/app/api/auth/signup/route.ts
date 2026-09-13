@@ -3,7 +3,12 @@ import { cookies } from 'next/headers';
 import { connectDB } from '@/lib/db/mongodb';
 import { UserModel } from '@/lib/models/User';
 import { hashPassword } from '@/lib/auth/password';
-import { SESSION_COOKIE, sessionCookieOptions, signSession } from '@/lib/auth/session';
+import {
+  assertSessionConfiguration,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+  signSession,
+} from '@/lib/auth/session';
 import { signupSchema } from '@/lib/validation/auth';
 import { fail, handleError, ok } from '@/lib/utils/api';
 import { logger } from '@/lib/utils/logger';
@@ -19,6 +24,9 @@ export async function POST(req: NextRequest) {
     if (!body) return fail('Invalid request body.');
 
     const { username, password } = signupSchema.parse(body);
+    // Do this before writing the account, otherwise a bad Vercel secret can
+    // leave the user with a created account but no session.
+    assertSessionConfiguration();
     const passwordHash = await hashPassword(password);
 
     await connectDB();

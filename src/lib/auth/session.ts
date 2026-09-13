@@ -12,13 +12,24 @@ export interface SessionPayload {
 
 let cachedKey: Uint8Array | null = null;
 
+/** A safe-to-display error for a server that cannot issue session cookies. */
+export class AuthConfigurationError extends Error {
+  constructor() {
+    super('AUTH_SECRET must be set to at least 32 characters in production.');
+    this.name = 'AuthConfigurationError';
+  }
+}
+
 function secretKey(): Uint8Array {
   if (cachedKey) return cachedKey;
 
-  const secret = process.env.AUTH_SECRET;
+  // Environment-variable UIs occasionally preserve pasted whitespace. It is
+  // never meaningful in a generated secret and would otherwise make a value
+  // that looks valid fail the length check (or sign different cookies).
+  const secret = process.env.AUTH_SECRET?.trim();
   if (!secret || secret.length < 32) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('AUTH_SECRET must be set to at least 32 characters in production.');
+      throw new AuthConfigurationError();
     }
     // Dev convenience only: a fixed key so sessions survive a server restart.
     cachedKey = new TextEncoder().encode('adalat-diary-development-secret-key-not-for-production');
@@ -27,6 +38,15 @@ function secretKey(): Uint8Array {
 
   cachedKey = new TextEncoder().encode(secret);
   return cachedKey;
+}
+
+/**
+ * Checks production session configuration before a route mutates data. In
+ * particular, signup must not create an account and only then fail to issue
+ * its session cookie.
+ */
+export function assertSessionConfiguration(): void {
+  secretKey();
 }
 
 export async function signSession(payload: SessionPayload): Promise<string> {
