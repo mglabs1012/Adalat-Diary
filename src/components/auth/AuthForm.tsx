@@ -8,7 +8,7 @@ import { loginSchema, signupSchema } from '@/lib/validation/auth';
 import { toast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
-import { Field, TextInput } from '@/components/ui/Form';
+import { Checkbox, Field, TextInput } from '@/components/ui/Form';
 
 type Mode = 'login' | 'signup';
 type Errors = Partial<Record<'username' | 'password' | 'form', string>>;
@@ -51,6 +51,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [reveal, setReveal] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
@@ -60,7 +61,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
     // Validate with the same Zod schema the server uses.
     const schema = mode === 'signup' ? signupSchema : loginSchema;
-    const parsed = schema.safeParse({ username, password });
+    const parsed = schema.safeParse({ username, password, remember });
     if (!parsed.success) {
       const next: Errors = {};
       for (const issue of parsed.error.issues) {
@@ -148,7 +149,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               autoCorrect="off"
               spellCheck={false}
               enterKeyHint="next"
-              placeholder="adv.garvit"
+              placeholder="john.doe"
               className="field-dark"
               iconClassName="text-[#8e99ad]"
             />
@@ -191,6 +192,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
             </div>
           )}
         </Field>
+
+        <Checkbox
+          tone="onDark"
+          checked={remember}
+          onChange={setRemember}
+          label="Keep me signed in"
+          hint={
+            remember
+              ? 'This device stays signed in for 90 days'
+              : 'You will be signed out when you close the browser'
+          }
+        />
 
         {errors.form ? (
           <p

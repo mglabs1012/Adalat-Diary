@@ -14,11 +14,11 @@ export async function GET(req: NextRequest) {
     const ownerId = await requireOwnerId();
     if (!ownerId) return unauthorized();
 
-    const { q, filter, stage, page, pageSize } = listQuerySchema.parse(
+    const { q, filter, stage, from, to, page, pageSize } = listQuerySchema.parse(
       Object.fromEntries(req.nextUrl.searchParams),
     );
 
-    const result = await listCases(ownerId, { filter, q, stage, page, pageSize });
+    const result = await listCases(ownerId, { filter, q, stage, from, to, page, pageSize });
     return ok(result, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err) {
     return handleError(err);

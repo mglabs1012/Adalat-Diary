@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
     if (!body) return fail('Invalid request body.');
 
-    const { username, password } = loginSchema.parse(body);
+    const { username, password, remember } = loginSchema.parse(body);
 
     await connectDB();
 
@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
 
     log.info('signed in', { username, id });
 
-    const token = await signSession({ sub: id, username });
-    (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions);
+    const token = await signSession({ sub: id, username }, remember);
+    (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(remember));
 
     return ok({ username, displayName });
   } catch (err) {

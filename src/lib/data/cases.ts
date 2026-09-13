@@ -17,11 +17,26 @@ function escapeRegex(input: string): string {
 }
 
 /** Turns the UI filter chips into an index-friendly Mongo query. */
-function buildQuery(ownerId: string, filter: CaseFilter, q?: string, stage?: string) {
+function buildQuery(
+  ownerId: string,
+  filter: CaseFilter,
+  q?: string,
+  stage?: string,
+  range?: { from?: string; to?: string },
+) {
   const query: FilterQuery<CaseDoc> = { ownerId };
   const today = startOfDay();
 
   switch (filter) {
+    case 'range': {
+      // A cause list for a window of dates. Status is deliberately not
+      // constrained: what matters is what carried a date in that window.
+      const window: Record<string, Date> = {};
+      if (range?.from) window.$gte = startOfDay(range.from);
+      if (range?.to) window.$lte = endOfDay(range.to);
+      query.nextDate = Object.keys(window).length ? window : { $ne: null };
+      break;
+    }
     case 'today':
       query.status = 'active';
       query.nextDate = { $gte: today, $lte: endOfDay() };
@@ -53,15 +68,17 @@ export interface ListOptions {
   filter: CaseFilter;
   q?: string;
   stage?: string;
+  from?: string;
+  to?: string;
   page: number;
   pageSize: number;
 }
 
 export async function listCases(ownerId: string, opts: ListOptions): Promise<CaseListResponse> {
-  const { filter, q, stage, page, pageSize } = opts;
+  const { filter, q, stage, from, to, page, pageSize } = opts;
 
   await connectDB();
-  const query = buildQuery(ownerId, filter, q, stage);
+  const query = buildQuery(ownerId, filter, q, stage, { from, to });
   const skip = (page - 1) * pageSize;
 
   // Overdue and disposed read newest-first; everything else reads pinned-first
@@ -69,7 +86,9 @@ export async function listCases(ownerId: string, opts: ListOptions): Promise<Cas
   const sort: Record<string, 1 | -1> =
     filter === 'disposed' || filter === 'overdue'
       ? { nextDate: -1, updatedAt: -1 }
-      : { pinned: -1, nextDate: 1, updatedAt: -1 };
+      : filter === 'range'
+        ? { nextDate: 1, crn: 1 }
+        : { pinned: -1, nextDate: 1, updatedAt: -1 };
 
   const [docs, total] = await Promise.all([
     CaseModel.find(query).sort(sort).skip(skip).limit(pageSize).lean().exec(),

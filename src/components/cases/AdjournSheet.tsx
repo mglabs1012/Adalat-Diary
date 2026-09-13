@@ -14,7 +14,7 @@ import { toast } from '@/hooks/useToast';
 import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
-import { DateInput, Field, SelectInput, TextArea, TextInput } from '@/components/ui/Form';
+import { DatePicker, Field, Select, TextArea, TextInput } from '@/components/ui/Form';
 
 interface AdjournSheetProps {
   record: CaseRecord;
@@ -60,7 +60,7 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
           url: `/api/cases/${record.id}/adjourn`,
           method: 'POST',
           body: payload,
-          label: `Next date for ${record.crn}`,
+          label: `Next date for ${record.crn || record.party1}`,
         });
         toast('Recorded on device — will sync when online', 'success');
       } else {
@@ -135,27 +135,18 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
             <div className="grid grid-cols-1 gap-space-base sm:grid-cols-2">
               <Field label="Next date of hearing" required>
                 {(ids) => (
-                  <DateInput
-                    ids={ids}
-                    value={nextDate}
-                    onChange={(e) => setNextDate(e.target.value)}
-                  />
+                  <DatePicker ids={ids} value={nextDate} onChange={setNextDate} />
                 )}
               </Field>
 
               <Field label="Next stage">
                 {(ids) => (
-                  <SelectInput
+                  <Select
                     ids={ids}
                     value={stage}
-                    onChange={(e) => setStage(e.target.value as StageId)}
-                  >
-                    {STAGES.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </SelectInput>
+                    onChange={(v) => setStage(v as StageId)}
+                    options={STAGES.map((s) => ({ value: s.id, label: s.label }))}
+                  />
                 )}
               </Field>
             </div>
@@ -188,7 +179,7 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Passover granted, PW-1 partly examined, next for cross…"
+              placeholder="Passover granted, part-heard, next for cross…"
             />
           )}
         </Field>

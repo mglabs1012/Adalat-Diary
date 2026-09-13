@@ -2,13 +2,16 @@ import { z } from 'zod';
 import { STAGE_IDS } from '@/lib/constants/stages';
 
 const trimmed = (max: number) => z.string().trim().min(1).max(max);
+/**
+ * An absent optional field can arrive three ways: missing, an empty string
+ * from a form, or an explicit null from a CSV row or a "clear this" PATCH.
+ * All three mean the same thing, so all three are accepted.
+ */
 const optionalText = (max: number) =>
   z
-    .string()
-    .trim()
-    .max(max)
+    .union([z.string().trim().max(max), z.null()])
     .optional()
-    .transform((v) => (v === '' ? undefined : v));
+    .transform((v) => (v === '' || v === null ? undefined : v));
 
 /** Accepts "2026-09-10", a full ISO string, or null/"" to clear the date. */
 const dateField = z
@@ -21,7 +24,8 @@ const dateField = z
   });
 
 export const caseCreateSchema = z.object({
-  crn: trimmed(40).transform((v) => v.toUpperCase()),
+  // Optional: plenty of matters are opened before the registry issues a CRN.
+  crn: optionalText(40).transform((v) => v?.toUpperCase()),
   court: trimmed(120),
   party1: trimmed(160),
   party2: trimmed(160),
@@ -52,12 +56,22 @@ export const adjournSchema = z.object({
   disposed: z.boolean().optional(),
 });
 
+/** yyyy-MM-dd, as sent by <input type="date"> and by the export dialog. */
+const isoDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected yyyy-MM-dd')
+  .optional();
+
 export const listQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
-  filter: z.enum(['all', 'today', 'upcoming', 'overdue', 'disposed']).default('all'),
+  filter: z.enum(['all', 'today', 'upcoming', 'overdue', 'disposed', 'range']).default('all'),
   stage: z.enum(STAGE_IDS).optional(),
+  /** Inclusive next-date window, used by `filter=range` for PDF exports. */
+  from: isoDay,
+  to: isoDay,
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  // A month export can legitimately pull several hundred rows in one go.
+  pageSize: z.coerce.number().int().min(1).max(500).default(20),
 });
 
 export type CaseCreateInput = z.input<typeof caseCreateSchema>;

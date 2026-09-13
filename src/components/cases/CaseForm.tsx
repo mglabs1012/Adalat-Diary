@@ -1,11 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import type { CaseRecord, PartySide, StageId } from '@/types/case';
 import { ApiError, casesApi } from '@/lib/api/client';
 import { enqueue } from '@/lib/offline/outbox';
-import { COURT_SUGGESTIONS, PURPOSE_SUGGESTIONS } from '@/lib/constants/courts';
+import { COURT_GROUPS, PURPOSE_SUGGESTIONS, isKnownCourt } from '@/lib/constants/courts';
 import { STAGES } from '@/lib/constants/stages';
 import { toInputDate } from '@/lib/utils/date';
 import { revalidateDiary } from '@/hooks/useCases';
@@ -14,16 +14,17 @@ import { toast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import {
-  DateInput,
+  DatePicker,
   Field,
   FormActions,
   FormGrid,
   FormRow,
   FormSection,
   SegmentedInput,
-  SelectInput,
+  Select,
   TextArea,
   TextInput,
+  type SelectGroup,
 } from '@/components/ui/Form';
 
 interface CaseFormProps {
@@ -38,6 +39,8 @@ const SIDES = [
 ];
 
 const NOTES_MAX = 5000;
+
+const STAGE_OPTIONS = STAGES.map((s) => ({ value: s.id, label: s.label }));
 
 /**
  * One form for create and edit. The seven diary fields come first and are
@@ -71,6 +74,22 @@ export function CaseForm({ initial }: CaseFormProps) {
     notes: initial?.notes ?? '',
   });
 
+  const courtGroups = useMemo<SelectGroup[]>(() => {
+    const groups: SelectGroup[] = COURT_GROUPS.map((g) => ({
+      label: g.label,
+      options: g.courts.map((c) => ({ value: c, label: c })),
+    }));
+    // An older record may carry a court no longer on the list; keep it
+    // selectable so opening the form cannot silently move the matter.
+    if (form.court && !isKnownCourt(form.court)) {
+      groups.unshift({
+        label: 'On this record',
+        options: [{ value: form.court, label: form.court, hint: 'Not on the current list' }],
+      });
+    }
+    return groups;
+  }, [form.court]);
+
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => (e[key as string] ? { ...e, [key as string]: undefined } : e));
@@ -78,7 +97,6 @@ export function CaseForm({ initial }: CaseFormProps) {
 
   function validate(): boolean {
     const next: Errors = {};
-    if (!form.crn.trim()) next.crn = 'CRN is required';
     if (!form.court.trim()) next.court = 'Court is required';
     if (!form.party1.trim()) next.party1 = 'First party is required';
     if (!form.party2.trim()) next.party2 = 'Second party is required';
@@ -151,9 +169,8 @@ export function CaseForm({ initial }: CaseFormProps) {
           <FormRow>
             <Field
               label="CRN / case reference"
-              required
               error={errors.crn}
-              hint="The number the registry knows this file by"
+              hint="Optional — the number the registry knows this file by"
             >
               {(ids) => (
                 <TextInput
@@ -172,24 +189,16 @@ export function CaseForm({ initial }: CaseFormProps) {
           </FormRow>
 
           <FormRow>
-            <Field label="Court" required error={errors.court}>
+            <Field label="Court" required error={errors.court} hint="The establishment this matter is listed in">
               {(ids) => (
-                <>
-                  <TextInput
-                    ids={ids}
-                    leading="courthouse"
-                    value={form.court}
-                    onChange={(e) => set('court', e.target.value)}
-                    placeholder="District & Sessions Court, Tis Hazari"
-                    list="court-suggestions"
-                    enterKeyHint="next"
-                  />
-                  <datalist id="court-suggestions">
-                    {COURT_SUGGESTIONS.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
-                </>
+                <Select
+                  ids={ids}
+                  value={form.court}
+                  onChange={(v) => set('court', v)}
+                  placeholder="Select a court…"
+                  groups={courtGroups}
+                  searchable
+                />
               )}
             </Field>
           </FormRow>
@@ -204,7 +213,7 @@ export function CaseForm({ initial }: CaseFormProps) {
                       ids={ids}
                       value={form.party1}
                       onChange={(e) => set('party1', e.target.value)}
-                      placeholder="Full name as filed"
+                      placeholder="John Doe"
                       enterKeyHint="next"
                     />
                   )}
@@ -223,7 +232,7 @@ export function CaseForm({ initial }: CaseFormProps) {
                       ids={ids}
                       value={form.party2}
                       onChange={(e) => set('party2', e.target.value)}
-                      placeholder="Full name as filed"
+                      placeholder="Jane Smith & Ors."
                       enterKeyHint="next"
                     />
                   )}
@@ -234,17 +243,12 @@ export function CaseForm({ initial }: CaseFormProps) {
 
           <Field label="Stage" hint="Where the matter has reached">
             {(ids) => (
-              <SelectInput
+              <Select
                 ids={ids}
                 value={form.stage}
-                onChange={(e) => set('stage', e.target.value as StageId)}
-              >
-                {STAGES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </SelectInput>
+                onChange={(v) => set('stage', v as StageId)}
+                options={STAGE_OPTIONS}
+              />
             )}
           </Field>
 
@@ -261,11 +265,11 @@ export function CaseForm({ initial }: CaseFormProps) {
 
           <Field label="Previous date" error={errors.preDate} hint="The last hearing">
             {(ids) => (
-              <DateInput
+              <DatePicker
                 ids={ids}
                 value={form.preDate}
                 max={form.nextDate || undefined}
-                onChange={(e) => set('preDate', e.target.value)}
+                onChange={(v) => set('preDate', v)}
               />
             )}
           </Field>
@@ -276,11 +280,11 @@ export function CaseForm({ initial }: CaseFormProps) {
             hint="What the board is counting down to"
           >
             {(ids) => (
-              <DateInput
+              <DatePicker
                 ids={ids}
                 value={form.nextDate}
                 min={form.preDate || undefined}
-                onChange={(e) => set('nextDate', e.target.value)}
+                onChange={(v) => set('nextDate', v)}
               />
             )}
           </Field>
@@ -288,9 +292,11 @@ export function CaseForm({ initial }: CaseFormProps) {
       </FormSection>
 
       <FormSection
-        title="Chamber details"
+        title="Case details"
         icon="folder"
-        description="Optional — everything here is context you may want in the corridor."
+        description="Case number, judge, client and notes"
+        collapsible
+        defaultOpen={false}
       >
         <FormGrid>
           <Field label="Case number" error={errors.caseNo}>
@@ -311,7 +317,7 @@ export function CaseForm({ initial }: CaseFormProps) {
                 ids={ids}
                 value={form.courtRoom}
                 onChange={(e) => set('courtRoom', e.target.value)}
-                placeholder="Room 14"
+                placeholder="Court Room 5"
               />
             )}
           </Field>
@@ -323,7 +329,7 @@ export function CaseForm({ initial }: CaseFormProps) {
                 leading="person"
                 value={form.judge}
                 onChange={(e) => set('judge', e.target.value)}
-                placeholder="Sh. A. K. Sharma, ADJ"
+                placeholder="Sh. R. K. Verma, ADJ"
               />
             )}
           </Field>
@@ -335,7 +341,7 @@ export function CaseForm({ initial }: CaseFormProps) {
                   ids={ids}
                   value={form.purpose}
                   onChange={(e) => set('purpose', e.target.value)}
-                  placeholder="Cross examination of PW-2"
+                  placeholder="Cross examination"
                   list="purpose-suggestions"
                 />
                 <datalist id="purpose-suggestions">
@@ -367,7 +373,7 @@ export function CaseForm({ initial }: CaseFormProps) {
                 inputMode="tel"
                 value={form.clientPhone}
                 onChange={(e) => set('clientPhone', e.target.value)}
-                placeholder="98xxxxxxxx"
+                placeholder="9876543210"
                 className="tnum"
               />
             )}

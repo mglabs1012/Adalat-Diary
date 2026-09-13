@@ -1,6 +1,12 @@
 'use client';
 
-import { useId, type ReactNode, type SelectHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import {
+  useId,
+  useState,
+  type ReactNode,
+  type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { cn } from '@/lib/utils/cn';
 import { Icon, type IconName } from './Icon';
 
@@ -19,33 +25,74 @@ export function FormSection({
   icon,
   description,
   aside,
+  collapsible,
+  defaultOpen = true,
   children,
 }: {
   title: string;
   icon?: IconName;
   description?: string;
   aside?: ReactNode;
+  /** Turns the header into a disclosure button with a rotating chevron. */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(collapsible ? defaultOpen : true);
+  const bodyId = useId();
+
+  const heading = (
+    <>
+      <div className="flex min-w-0 items-start gap-space-sm">
+        {icon ? (
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+            <Icon name={icon} size={16} />
+          </span>
+        ) : null}
+        <div className="min-w-0 text-left">
+          <h2 className="font-display text-headline-sm text-primary">{title}</h2>
+          {description ? (
+            <p className="mt-0.5 text-body-sm text-on-surface-variant">{description}</p>
+          ) : null}
+        </div>
+      </div>
+      {collapsible ? (
+        <Icon
+          name="chevron"
+          size={16}
+          className={cn(
+            'mt-1 shrink-0 text-on-surface-variant transition-transform',
+            open && 'rotate-90',
+          )}
+        />
+      ) : (
+        aside
+      )}
+    </>
+  );
+
+  const headerClass =
+    'flex w-full items-start justify-between gap-space-md bg-surface-container-low/60 px-space-base py-space-md';
+
   return (
     <section className="card overflow-hidden">
-      <header className="flex items-start justify-between gap-space-md border-b border-on-surface/5 bg-surface-container-low/60 px-space-base py-space-md">
-        <div className="flex min-w-0 items-start gap-space-sm">
-          {icon ? (
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
-              <Icon name={icon} size={16} />
-            </span>
-          ) : null}
-          <div className="min-w-0">
-            <h2 className="font-display text-headline-sm text-primary">{title}</h2>
-            {description ? (
-              <p className="mt-0.5 text-body-sm text-on-surface-variant">{description}</p>
-            ) : null}
-          </div>
-        </div>
-        {aside}
-      </header>
-      <div className="p-space-base lg:p-space-lg">{children}</div>
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={bodyId}
+          className={cn(headerClass, 'transition-colors hover:bg-surface-container-low', open && 'border-b border-on-surface/5')}
+        >
+          {heading}
+        </button>
+      ) : (
+        <header className={cn(headerClass, 'border-b border-on-surface/5')}>{heading}</header>
+      )}
+
+      <div id={bodyId} hidden={!open} className="p-space-base lg:p-space-lg">
+        {children}
+      </div>
     </section>
   );
 }
@@ -189,41 +236,14 @@ export function TextInput({
   );
 }
 
-export function DateInput({
-  ids,
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & { ids: Ids }) {
-  return (
-    <input
-      {...props}
-      type="date"
-      id={ids.id}
-      aria-describedby={ids.describedBy}
-      aria-invalid={ids.invalid || undefined}
-      className={cn('field field-date tnum', ids.invalid && 'field-error', className)}
-    />
-  );
-}
-
-export function SelectInput({
-  ids,
-  className,
-  children,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { ids: Ids }) {
-  return (
-    <select
-      {...props}
-      id={ids.id}
-      aria-describedby={ids.describedBy}
-      aria-invalid={ids.invalid || undefined}
-      className={cn('field field-select', ids.invalid && 'field-error', className)}
-    >
-      {children}
-    </select>
-  );
-}
+/**
+ * Dropdowns and dates are custom controls, not native ones — see Select.tsx
+ * and DatePicker.tsx for why. Re-exported here so a form imports every control
+ * it needs from one place.
+ */
+export { Select } from './Select';
+export type { SelectOption, SelectGroup } from './Select';
+export { DatePicker } from './DatePicker';
 
 export function TextArea({
   ids,
@@ -286,6 +306,65 @@ export function SegmentedInput<T extends string>({
         );
       })}
     </div>
+  );
+}
+
+/** Checkbox with a full-row hit target — a 16px box alone is not tappable. */
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+  hint,
+  tone = 'default',
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint?: string;
+  tone?: 'default' | 'onDark';
+}) {
+  const dark = tone === 'onDark';
+  return (
+    <label
+      className={cn(
+        'flex cursor-pointer select-none items-start gap-space-sm rounded py-space-xs',
+        dark ? 'text-[#b3bccd]' : 'text-on-surface-variant',
+      )}
+    >
+      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer sr-only"
+        />
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-5 w-5 items-center justify-center rounded-sm border transition-colors',
+            checked
+              ? dark
+                ? 'border-primary-fixed-dim bg-primary-fixed-dim text-on-primary-fixed'
+                : 'border-primary bg-primary text-on-primary'
+              : dark
+                ? 'border-white/30'
+                : 'border-outline',
+            'peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2',
+            dark ? 'peer-focus-visible:ring-primary-fixed-dim' : 'peer-focus-visible:ring-primary',
+          )}
+        >
+          {checked ? <Icon name="tick" size={13} /> : null}
+        </span>
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-label-lg">{label}</span>
+        {hint ? (
+          <span className={cn('text-label-md', dark ? 'text-[#8e99ad]' : 'text-on-surface-variant/80')}>
+            {hint}
+          </span>
+        ) : null}
+      </span>
+    </label>
   );
 }
 

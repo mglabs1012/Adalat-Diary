@@ -14,6 +14,12 @@ const UserSchema = new Schema(
     /** `scrypt$<salt>$<key>` — see lib/auth/password.ts. Never selected by default. */
     passwordHash: { type: String, required: true, select: false },
     displayName: { type: String, trim: true, maxlength: 60 },
+    /**
+     * A square data: URL, resized to 256px on the client before upload. Kept
+     * on the user document rather than in object storage: it is one small
+     * image per chamber, and this keeps the app to a single dependency.
+     */
+    avatar: { type: String, maxlength: 400_000 },
     lastLoginAt: { type: Date },
   },
   { timestamps: true, versionKey: false },

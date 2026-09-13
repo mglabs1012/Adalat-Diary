@@ -10,6 +10,7 @@ import { useStats } from '@/hooks/useStats';
 import { AppBar, AppBarButton } from '@/components/layout/AppBar';
 import { CaseCard } from '@/components/cases/CaseCard';
 import { Button, ButtonLink } from '@/components/ui/Button';
+import { ImportDialog } from '@/components/cases/ImportDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -39,6 +40,7 @@ export function DocketScreen() {
   const [stage, setStage] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [showStages, setShowStages] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { stats } = useStats();
 
@@ -91,6 +93,15 @@ export function DocketScreen() {
               active={showStages || Boolean(stage)}
               onClick={() => setShowStages((s) => !s)}
             />
+            <Button
+              size="sm"
+              variant="tonal"
+              icon="download"
+              className="ml-space-xs hidden sm:inline-flex"
+              onClick={() => setImportOpen(true)}
+            >
+              Import
+            </Button>
             <ButtonLink
               href="/cases/new"
               icon="add"
@@ -166,6 +177,8 @@ export function DocketScreen() {
           />
         )}
       </main>
+
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </>
   );
 }

@@ -7,11 +7,12 @@ import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { useOnline } from '@/hooks/useOnline';
-import { useStats } from '@/hooks/useStats';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { toast } from '@/hooks/useToast';
 import { AppBar } from '@/components/layout/AppBar';
-import { useSession } from '@/components/layout/SessionProvider';
+import { ProfileCard } from '@/components/settings/ProfileCard';
+import { ExportDialog } from '@/components/cases/ExportDialog';
+import { ImportDialog } from '@/components/cases/ImportDialog';
 import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Sheet } from '@/components/ui/Sheet';
@@ -24,21 +25,21 @@ const THEMES: { id: ThemePreference; label: string; icon: IconName }[] = [
 
 export function SettingsScreen() {
   const online = useOnline();
-  const session = useSession();
-  const { stats } = useStats();
   const { canInstall, installed, install } = useInstallPrompt();
   const { preference, setTheme, ready } = useTheme();
 
   const [queued, setQueued] = useState<OutboxItem[]>([]);
-  const [exporting, setExporting] = useState(false);
+  const [csvBusy, setCsvBusy] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [exporting, setExportOpen] = useState(false);
+  const [importing, setImportOpen] = useState(false);
 
   const refresh = useCallback(async () => setQueued(await listOutbox()), []);
   useEffect(() => void refresh(), [refresh]);
 
   async function exportCsv() {
-    if (exporting) return;
-    setExporting(true);
+    if (csvBusy) return;
+    setCsvBusy(true);
     try {
       const { items } = await casesApi.list('filter=all&pageSize=100');
       const header = ['CRN', 'Pre Date', 'Court', 'Party 1', 'Party 2', 'Stage', 'Next Date'];
@@ -65,7 +66,7 @@ export function SettingsScreen() {
     } catch {
       toast('Export failed — check your connection', 'error');
     } finally {
-      setExporting(false);
+      setCsvBusy(false);
     }
   }
 
@@ -83,26 +84,7 @@ export function SettingsScreen() {
       <AppBar title="Chamber" subtitle="Account, sync & appearance" />
 
       <main className="page flex flex-1 flex-col gap-space-base pb-nav pt-appbar">
-        {/* Account */}
-        <section className="card flex flex-col gap-space-md p-space-base sm:flex-row sm:items-center lg:p-space-lg">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary font-display text-headline-md uppercase text-on-primary">
-            {session.username.charAt(0)}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-headline-sm text-primary">@{session.username}</p>
-            <p className="tnum text-body-sm text-on-surface-variant">
-              {stats.active} active · {stats.disposed} disposed
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            icon="logout"
-            className="text-error ring-error/25 hover:bg-error/[0.06]"
-            onClick={() => setConfirmSignOut(true)}
-          >
-            Sign out
-          </Button>
-        </section>
+        <ProfileCard onSignOut={() => setConfirmSignOut(true)} />
 
         {/* Two columns of cards once there is room for them. */}
         <div className="grid grid-cols-1 gap-space-base lg:grid-cols-2 lg:items-start">
@@ -174,8 +156,36 @@ export function SettingsScreen() {
           </section>
 
           <section className="card flex flex-col divide-y divide-on-surface/5 overflow-hidden lg:col-span-2">
+            <Header text="Diary data" />
+            <div className="grid grid-cols-1 divide-y divide-on-surface/5 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+              <ActionRow
+                icon="share"
+                iconClass="text-secondary"
+                title="Share as PDF"
+                subtitle="A day's cause list, or the whole month"
+                onClick={() => setExportOpen(true)}
+              />
+              <ActionRow
+                icon="download"
+                iconClass="text-tertiary"
+                title="Import from CSV"
+                subtitle="Bring an existing diary across"
+                onClick={() => setImportOpen(true)}
+              />
+              <ActionRow
+                icon="download"
+                iconClass="text-on-surface-variant"
+                title="Export as CSV"
+                subtitle="CRN, dates, court, parties and stage"
+                disabled={csvBusy}
+                onClick={exportCsv}
+              />
+            </div>
+          </section>
+
+          <section className="card flex flex-col divide-y divide-on-surface/5 overflow-hidden lg:col-span-2">
             <Header text="App" />
-            <div className="grid grid-cols-1 divide-y divide-on-surface/5 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+            <div className="grid grid-cols-1">
               {installed ? (
                 <StatusRow
                   icon="check"
@@ -201,24 +211,19 @@ export function SettingsScreen() {
                 />
               )}
 
-              <ActionRow
-                icon="download"
-                iconClass="text-tertiary"
-                title="Export diary as CSV"
-                subtitle="CRN, dates, court, parties and stage"
-                disabled={exporting}
-                onClick={exportCsv}
-              />
             </div>
           </section>
         </div>
 
         <p className="px-space-xs pb-space-md text-center text-label-md text-on-surface-variant">
-          Adalat Diary · v0.3.0
+          Adalat Diary · v0.6.0
           <br />
           Your case records stay in your own MongoDB.
         </p>
       </main>
+
+      <ExportDialog open={exporting} onClose={() => setExportOpen(false)} />
+      <ImportDialog open={importing} onClose={() => setImportOpen(false)} />
 
       <Sheet open={confirmSignOut} title="Sign out?" onClose={() => setConfirmSignOut(false)}>
         <div className="flex flex-col gap-space-lg">

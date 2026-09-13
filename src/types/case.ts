@@ -67,4 +67,4 @@ export interface DiaryStats {
   disposed: number;
 }
 
-export type CaseFilter = 'all' | 'today' | 'upcoming' | 'overdue' | 'disposed';
+export type CaseFilter = 'all' | 'today' | 'upcoming' | 'overdue' | 'disposed' | 'range';

@@ -14,9 +14,13 @@ export const passwordSchema = z
   .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password must be 128 characters or fewer');
 
+/** Keep this device signed in. Defaults off — safer on a shared machine. */
+const rememberSchema = z.boolean().optional().default(false);
+
 export const signupSchema = z.object({
   username: usernameSchema,
   password: passwordSchema,
+  remember: rememberSchema,
 });
 
 // Login stays permissive: length rules belong at signup, and enforcing them
@@ -24,4 +28,5 @@ export const signupSchema = z.object({
 export const loginSchema = z.object({
   username: z.string().trim().toLowerCase().min(1, 'Enter your username').max(32),
   password: z.string().min(1, 'Enter your password').max(128),
+  remember: rememberSchema,
 });

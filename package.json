@@ -1,6 +1,6 @@
 {
   "name": "adalat-diary",
-  "version": "0.3.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Adalat Diary - a court diary for advocates. Case records, cause lists and next dates, offline-first.",
   "scripts": {
@@ -8,11 +8,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:crn": "node --env-file=.env.local scripts/migrate-crn-index.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",
     "jose": "^6.2.12",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "mongoose": "^8.9.5",
     "next": "^15.1.6",
     "react": "^19.0.0",

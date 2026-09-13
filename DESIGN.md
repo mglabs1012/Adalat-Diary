@@ -157,16 +157,18 @@ every screen:
 
 | Field | Meaning |
 | --- | --- |
-| `crn` | Case Registration Number — the file's identity. Unique within a chamber. |
+| `crn` | Case Registration Number. Optional — a matter is often opened before the registry issues one — but unique within a chamber where present. |
 | `preDate` | The previous hearing date. |
-| `court` | Forum and, optionally, court room. |
+| `court` | The establishment, chosen from the 93 registry codes. |
 | `party1` | Petitioner / Plaintiff / Complainant. |
 | `party2` | Respondent / Defendant / Accused. |
 | `stage` | Where the matter has reached procedurally. |
 | `nextDate` | The next date of hearing. The single most valuable value in the app. |
 
-Chamber context (case number, judge, purpose, client, notes, procedural history) hangs off
-the record but is always collapsed behind the seven.
+Case detail (case number, court room, judge, purpose, client, notes) hangs off the record in
+a second card that is **collapsed by default**, behind a disclosure chevron. The seven fields
+are what a matter needs to exist; everything else is context you add when you have it, and
+it should not stand between the advocate and a saved record.
 
 ## Brand & Style
 
@@ -198,7 +200,16 @@ An executive hierarchy anchored in deep judicial slate, warmed by legal ochre.
   depth.
 
 Dark theme is a token swap on `.dark`, not a second set of components. Every colour is
-declared once as a CSS variable in `src/app/globals.css`.
+declared once as a CSS variable in `src/app/globals.css`. The dark ramp is deeper and less
+saturated than a straight inversion would give — the surfaces read as *dark* rather than as
+navy — with `outline-variant` lifted so hairlines and dividers still register, and the
+tertiary and error *containers* muted, since a container is a background and has no business
+being vivid.
+
+**Brand surfaces do not invert.** The board hero, the next-date panel and the sign-in screen
+use `.brand-panel` and the `*-fixed` tokens, which hold their value in both themes. Built
+from `bg-primary` they flipped to pale blue in dark mode while the text on them stayed pale,
+and the supporting copy disappeared.
 
 ### Procedural stage indicators
 
@@ -332,6 +343,40 @@ The most-used write in the app. A bottom sheet with adjournment presets (1 week 
 "disposed" toggle. One tap of "Commit to diary" moves `nextDate` into `preDate`, sets the
 new date, and appends to the procedural history.
 
+### Dropdowns
+Every dropdown in the app is the same control (`components/ui/Select.tsx`): a trigger
+identical to every other field — 48px, 8px radius, the same hairline that thickens to
+primary on focus — and a panel we draw ourselves.
+
+A native `<select>` was the starting point and had to go. Its option list is painted by the
+operating system, so none of it takes the app's type or colour, group headings are whatever
+the OS decides, and there is no room for a filter or a second line. With 93 courts that
+stops being a style preference.
+
+The panel is capped at 340px so a long list still reads as a dropdown rather than a
+full-height sheet, group headings stick while you scroll, and a filter box appears
+automatically past twelve options. Below that, typeahead covers it.
+
+Behaviour follows the ARIA combobox pattern: focus stays on the trigger throughout and
+`aria-activedescendant` points at the highlighted row, so arrow keys, Home/End, Enter,
+Escape and type-to-jump all work without re-implementing focus management.
+
+### Date fields
+Same trigger, a calendar in the panel (`components/ui/DatePicker.tsx`). The native date
+input is a different control in every browser — Chrome's grid, Firefox's, Safari's wheel —
+and none of them accept the app's colours. A court diary is mostly dates, so they may as
+well look like the rest of it: Monday-first grid, today ringed in ochre, the selection in
+navy, and `Today` / `Clear` on the footer. `min`/`max` grey out the days that would put a
+next date before a previous one.
+
+### Both, on one popover
+`components/ui/Popover.tsx` anchors either panel. It portals to `<body>` and positions
+`fixed` against a measured trigger rect, because dropdowns open inside bottom sheets and
+scrolling cards where an absolutely-positioned panel would be clipped by the first
+`overflow: auto` ancestor. It flips above the trigger when there is no room below, clamps to
+the viewport near an edge, and re-measures on scroll and resize through a rAF-throttled
+listener.
+
 ### Form controls
 Every input shares one geometry (`.field`): 48px minimum height, 8px radius, a hairline
 border at rest that thickens to `primary` with a 3px tinted ring on focus. An error
@@ -369,6 +414,24 @@ the only two accents on the screen, so there is never a question about where to 
 Validation runs on the same Zod schema the server uses, so the message a user sees is the
 message the API would have returned, and failures render inline rather than as a toast that
 can be missed.
+
+### Import dialog
+Three steps, never more. The first screen states the accepted format **in full** — a table
+of every column, whether it is required and a worked example — because the commonest import
+failure is a wrong header row, and a help link is read by nobody. The drop zone tints on
+drag-over; the review step leads with two tallies (ready / with problems) and then names the
+reason for every skipped row against its line number.
+
+### PDF documents
+Drawn to match the app rather than to look like a spreadsheet: the navy header band with the
+ochre rule under it, the app name and `COURT DIARY` on the left, document title and scope on
+the right; zebra-striped tables with a deep navy header row; a hairline footer carrying the
+chamber, the generation time and `Page n of m`.
+
+A **month** is never one long table. Each day gets its own heading — a tinted band with a
+gold edge, the long-form date and a matter count — followed by its own table. Column widths
+are fixed so the free-text column keeps ~35mm and wraps between words instead of hyphenating
+mid-word.
 
 ### Appearance control
 Light / Dark / System, as a three-way segmented track in Chamber settings. The choice is

@@ -1,9 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import { memo } from 'react';
 import type { CaseRecord } from '@/types/case';
-import { causeTitle } from '@/lib/utils/case';
+import { caseRef, causeTitle } from '@/lib/utils/case';
 import { formatDate, relativeDay, urgencyOf } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
+import { useDiaryPdf } from '@/hooks/useDiaryPdf';
 import { Icon } from '@/components/ui/Icon';
 import { DateChip } from './DateChip';
 import { StageBadge } from './StageBadge';
@@ -18,18 +21,22 @@ interface CaseCardProps {
 
 /**
  * Three-zone docket card: header (CRN + stage), body (cause title + forum),
- * footer (next date against previous date). Memoised — a long docket
- * re-renders on every keystroke in the search box.
+ * footer (next date against previous date).
+ *
+ * The card is an <article> with a full-bleed link overlay rather than one big
+ * <a>: that keeps the whole surface clickable while still allowing a real
+ * share button inside it, which nesting a button in an anchor would not.
+ * Memoised — a long docket re-renders on every keystroke in the search box.
  */
 export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }: CaseCardProps) {
   const urgency = urgencyOf(record.nextDate);
   const isDisposed = record.status === 'disposed';
+  const { shareCaseText } = useDiaryPdf();
 
   return (
-    <Link
-      href={`/cases/${record.id}`}
+    <article
       className={cn(
-        'card press group relative flex gap-space-md overflow-hidden transition-shadow hover:shadow-e2',
+        'card group relative flex gap-space-md overflow-hidden transition-shadow focus-within:shadow-e2 hover:shadow-e2',
         compact ? 'p-space-md' : 'p-space-base',
       )}
     >
@@ -45,8 +52,13 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
 
       <div className="flex min-w-0 flex-1 flex-col gap-space-xs">
         <div className="flex items-start justify-between gap-space-sm">
-          <span className="tnum truncate rounded bg-surface-container px-1.5 py-0.5 text-[13px] font-medium tracking-[0.05em] text-on-surface-variant">
-            {record.crn}
+          <span
+            className={cn(
+              'tnum truncate rounded bg-surface-container px-1.5 py-0.5 text-[13px] font-medium tracking-[0.05em]',
+              record.crn ? 'text-on-surface-variant' : 'text-on-surface-variant/60 italic',
+            )}
+          >
+            {caseRef(record)}
           </span>
           <div className="flex flex-shrink-0 items-center gap-space-xxs">
             {record.pinned ? (
@@ -65,7 +77,10 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
             compact ? 'line-clamp-2 text-label-lg' : 'line-clamp-2 text-headline-sm',
           )}
         >
-          {causeTitle(record)}
+          {/* The overlay sits on the title so the accessible name is right. */}
+          <Link href={`/cases/${record.id}`} className="after:absolute after:inset-0 after:content-['']">
+            {causeTitle(record)}
+          </Link>
         </h3>
 
         <div className="flex items-center gap-space-xs text-on-surface-variant">
@@ -90,13 +105,25 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
             <Icon name={isDisposed ? 'check' : 'clock'} size={13} />
             {isDisposed ? 'Disposed' : relativeDay(record.nextDate)}
           </span>
-          {compact ? null : (
-            <span className="tnum truncate text-label-md text-on-surface-variant">
-              Prev: {formatDate(record.preDate)}
-            </span>
-          )}
+
+          <div className="flex items-center gap-space-sm">
+            {compact ? null : (
+              <span className="tnum truncate text-label-md text-on-surface-variant">
+                Prev: {formatDate(record.preDate)}
+              </span>
+            )}
+            {/* Above the overlay, so it shares instead of navigating. */}
+            <button
+              onClick={() => void shareCaseText(record)}
+              aria-label={`Share ${caseRef(record)}`}
+              title="Share this matter"
+              className="press relative z-10 -mr-1 flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+            >
+              <Icon name="share" size={15} />
+            </button>
+          </div>
         </div>
       </div>
-    </Link>
+    </article>
   );
 });

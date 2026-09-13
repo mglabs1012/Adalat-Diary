@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils/cn';
 import { useStats } from '@/hooks/useStats';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { ButtonLink } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { useSession } from './SessionProvider';
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Adalat Diary';
@@ -87,9 +88,7 @@ export function SideNav() {
         href="/settings"
         className="m-space-md flex items-center gap-space-sm rounded-md bg-surface-container-low px-space-md py-space-md transition-colors hover:bg-surface-container"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-display text-label-lg uppercase text-on-primary">
-          {session.username.charAt(0)}
-        </span>
+        <Avatar username={session.username} avatar={session.avatar} size={36} />
         <span className="flex min-w-0 flex-col">
           <span className="truncate text-label-lg text-primary">@{session.username}</span>
           <span className="text-label-md text-on-surface-variant">Chamber settings</span>

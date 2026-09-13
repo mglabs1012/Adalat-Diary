@@ -4,6 +4,8 @@ export interface CasesKeyOptions {
   filter?: CaseFilter;
   q?: string;
   stage?: string;
+  from?: string;
+  to?: string;
   page?: number;
   pageSize?: number;
 }
@@ -23,6 +25,8 @@ export function casesKey(opts: CasesKeyOptions = {}): string {
   params.set('filter', opts.filter ?? 'all');
   if (opts.q) params.set('q', opts.q);
   if (opts.stage) params.set('stage', opts.stage);
+  if (opts.from) params.set('from', opts.from);
+  if (opts.to) params.set('to', opts.to);
   params.set('page', String(opts.page ?? 1));
   params.set('pageSize', String(opts.pageSize ?? 20));
   return `/api/cases?${params.toString()}`;

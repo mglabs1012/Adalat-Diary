@@ -63,50 +63,56 @@
   }
 
   .dark {
-    --background: 16 22 35;
-    --on-background: 228 233 245;
-    --surface: 16 22 35;
-    --surface-dim: 11 16 24;
-    --surface-bright: 43 51 70;
-    --surface-container-lowest: 22 29 44;
-    --surface-container-low: 26 34 51;
-    --surface-container: 30 39 57;
-    --surface-container-high: 37 47 67;
-    --surface-container-highest: 45 56 78;
-    --surface-variant: 45 56 78;
-    --on-surface: 228 233 245;
-    --on-surface-variant: 179 188 205;
-    --inverse-surface: 228 233 245;
-    --inverse-on-surface: 26 34 51;
-    --outline: 138 146 163;
-    --outline-variant: 65 75 96;
+    /* Deeper and a touch less blue than the surface ramp it replaced: the old
+       set was saturated enough to read as navy rather than as "dark", and the
+       tiers sat too close together to separate a card from its background. */
+    --background: 14 18 28;
+    --on-background: 230 234 243;
+    --surface: 14 18 28;
+    --surface-dim: 9 12 19;
+    --surface-bright: 46 54 71;
+    --surface-container-lowest: 18 23 34;
+    --surface-container-low: 23 29 42;
+    --surface-container: 27 34 49;
+    --surface-container-high: 34 42 59;
+    --surface-container-highest: 42 51 70;
+    --surface-variant: 42 51 70;
+    --on-surface: 230 234 243;
+    --on-surface-variant: 176 185 202;
+    --inverse-surface: 230 234 243;
+    --inverse-on-surface: 23 29 42;
+    --outline: 132 141 158;
+    /* Raised so dividers and hairlines actually register on dark surfaces. */
+    --outline-variant: 74 84 104;
 
-    --primary: 181 200 227;
-    --on-primary: 11 31 51;
-    --primary-container: 36 52 79;
-    --on-primary-container: 215 226 255;
+    --primary: 175 196 226;
+    --on-primary: 10 27 46;
+    --primary-container: 32 48 74;
+    --on-primary-container: 214 226 252;
     --inverse-primary: 26 43 73;
 
-    --secondary: 248 189 61;
-    --on-secondary: 63 45 0;
-    --secondary-container: 93 66 0;
-    --on-secondary-container: 255 222 164;
+    --secondary: 245 190 74;
+    --on-secondary: 58 41 0;
+    --secondary-container: 86 62 0;
+    --on-secondary-container: 255 224 170;
 
-    --tertiary: 195 192 255;
-    --on-tertiary: 31 19 143;
-    --tertiary-container: 51 35 204;
-    --on-tertiary-container: 226 223 255;
+    /* Containers are backgrounds. In dark they have to be dark — the old
+       indigo and blood red were vivid enough to fight the text on them. */
+    --tertiary: 186 184 250;
+    --on-tertiary: 28 18 122;
+    --tertiary-container: 45 38 110;
+    --on-tertiary-container: 224 222 255;
 
     --error: 255 180 171;
-    --on-error: 105 0 5;
-    --error-container: 147 0 10;
-    --on-error-container: 255 218 214;
+    --on-error: 96 0 4;
+    --error-container: 118 28 26;
+    --on-error-container: 255 220 216;
 
-    --success: 108 211 154;
-    --success-container: 20 83 45;
-    --on-success-container: 187 247 208;
+    --success: 118 216 162;
+    --success-container: 22 74 45;
+    --on-success-container: 190 246 210;
 
-    --scrim: rgba(2, 6, 16, 0.62);
+    --scrim: rgba(2, 5, 12, 0.66);
     color-scheme: dark;
   }
 
@@ -157,7 +163,7 @@
     border: 1px solid rgb(15 23 42 / 0.06);
   }
   .dark .card {
-    border-color: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.09);
   }
 
   /* ── Page containers ───────────────────────────────────────────────────────
@@ -183,6 +189,18 @@
     .pb-nav {
       padding-bottom: 3rem;
     }
+  }
+
+  /**
+   * Deep navy in both themes. `bg-primary` cannot carry a brand surface: it
+   * flips to pale blue in dark mode while the `*-fixed` text sitting on it
+   * stays pale, which is how the hero ended up light-on-light.
+   */
+  .brand-panel {
+    background-color: rgb(26 43 73);
+  }
+  .dark .brand-panel {
+    background-color: rgb(21 33 55);
   }
 
   .pill {
@@ -231,7 +249,7 @@
     background-size: 1.25rem 1.25rem;
   }
   .dark .field-select {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b3bccd'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b0b9ca'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
   }
 
   /* Make the whole date field open the picker, not just the tiny glyph. */

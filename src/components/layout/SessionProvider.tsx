@@ -5,6 +5,8 @@ import { createContext, useContext } from 'react';
 export interface ClientSession {
   id: string;
   username: string;
+  /** data: URL, or null when the advocate has not set one. */
+  avatar: string | null;
 }
 
 const SessionContext = createContext<ClientSession | null>(null);

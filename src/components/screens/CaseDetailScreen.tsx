@@ -4,11 +4,12 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { casesApi } from '@/lib/api/client';
 import { getStage } from '@/lib/constants/stages';
-import { causeSlip, causeTitle, clientOf, sideLabel } from '@/lib/utils/case';
+import { caseRef, causeTitle, clientOf, sideLabel } from '@/lib/utils/case';
 import { formatDate, relativeDay, urgencyOf } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { revalidateDiary } from '@/hooks/useCases';
 import { useCase } from '@/hooks/useCase';
+import { useDiaryPdf } from '@/hooks/useDiaryPdf';
 import { toast } from '@/hooks/useToast';
 import { AppBar, AppBarButton } from '@/components/layout/AppBar';
 import { AdjournSheet } from '@/components/cases/AdjournSheet';
@@ -24,6 +25,7 @@ type Tab = 'overview' | 'history';
 export function CaseDetailScreen({ id }: { id: string }) {
   const router = useRouter();
   const { record, error, isLoading, mutate } = useCase(id);
+  const { busy, shareCasePdf, shareCaseText } = useDiaryPdf();
   const [tab, setTab] = useState<Tab>('overview');
   const [adjourning, setAdjourning] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -75,18 +77,7 @@ export function CaseDetailScreen({ id }: { id: string }) {
   }
 
   async function share() {
-    if (!record) return;
-    const text = causeSlip(record, formatDate);
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: causeTitle(record), text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        toast('Cause slip copied');
-      }
-    } catch {
-      /* the user dismissed the share sheet */
-    }
+    if (record) await shareCaseText(record);
   }
 
   async function remove() {
@@ -104,13 +95,18 @@ export function CaseDetailScreen({ id }: { id: string }) {
   return (
     <>
       <AppBar
-        title={record.crn}
+        title={caseRef(record)}
         subtitle={stage.label}
         back
         actions={
           <>
             <AppBarButton icon="pin" label="Pin case" active={record.pinned} onClick={togglePin} />
             <AppBarButton icon="share" label="Share cause slip" onClick={share} />
+            <AppBarButton
+              icon={busy === 'case' ? 'sync' : 'note'}
+              label="Share as PDF"
+              onClick={() => void shareCasePdf(record)}
+            />
             <ButtonLink
               href={`/cases/${record.id}/edit`}
               icon="edit"
@@ -139,8 +135,13 @@ export function CaseDetailScreen({ id }: { id: string }) {
               />
               <div className="flex flex-col gap-space-sm pl-space-xs">
                 <div className="flex flex-wrap items-center gap-space-xs">
-                  <span className="tnum rounded bg-surface-container px-2 py-0.5 text-[13px] tracking-[0.05em] text-on-surface-variant">
-                    {record.crn}
+                  <span
+                    className={cn(
+                      'tnum rounded bg-surface-container px-2 py-0.5 text-[13px] tracking-[0.05em]',
+                      record.crn ? 'text-on-surface-variant' : 'text-on-surface-variant/60 italic',
+                    )}
+                  >
+                    {caseRef(record)}
                   </span>
                   {record.caseNo ? (
                     <span className="tnum text-label-md text-on-surface-variant">{record.caseNo}</span>
@@ -182,7 +183,7 @@ export function CaseDetailScreen({ id }: { id: string }) {
                 'rounded-lg p-space-base shadow-e1 lg:p-space-lg',
                 disposed
                   ? 'bg-success-container text-on-success-container'
-                  : 'bg-primary-container text-on-primary',
+                  : 'brand-panel text-white',
               )}
             >
               <div className="flex items-center justify-between gap-space-sm">
@@ -211,7 +212,7 @@ export function CaseDetailScreen({ id }: { id: string }) {
                   size="lg"
                   block
                   pill
-                  className="mt-space-base hidden bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed-dim lg:inline-flex"
+                  className="mt-space-base hidden bg-secondary-fixed-dim text-on-secondary-fixed hover:bg-secondary-fixed lg:inline-flex"
                   onClick={() => setAdjourning(true)}
                 >
                   Record next date
@@ -267,20 +268,33 @@ export function CaseDetailScreen({ id }: { id: string }) {
                   </div>
                 ) : null}
 
-                <div className="card flex items-center justify-between p-space-sm">
+                <div className="card grid grid-cols-2 gap-space-xs p-space-sm sm:grid-cols-4">
+                  <Button
+                    variant="ghost"
+                    icon="share"
+                    onClick={() => void shareCaseText(record)}
+                  >
+                    Share
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    icon="note"
+                    loading={busy === 'case'}
+                    onClick={() => void shareCasePdf(record)}
+                  >
+                    PDF
+                  </Button>
                   <ButtonLink
                     href={`/cases/${record.id}/edit`}
                     variant="ghost"
                     icon="edit"
-                    className="flex-1"
                   >
-                    Edit record
+                    Edit
                   </ButtonLink>
-                  <span className="h-6 w-px bg-outline-variant/60" />
                   <Button
                     variant="ghost"
                     icon="trash"
-                    className="flex-1 text-error hover:bg-error/[0.08] hover:text-error"
+                    className="text-error hover:bg-error/[0.08] hover:text-error"
                     onClick={() => setConfirmDelete(true)}
                   >
                     Delete

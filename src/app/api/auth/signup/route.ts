@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
     if (!body) return fail('Invalid request body.');
 
-    const { username, password } = signupSchema.parse(body);
+    const { username, password, remember } = signupSchema.parse(body);
     const passwordHash = await hashPassword(password);
 
     await connectDB();
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
     log.info('account created', { username, id });
 
-    const token = await signSession({ sub: id, username });
-    (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions);
+    const token = await signSession({ sub: id, username }, remember);
+    (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(remember));
 
     return ok({ username }, { status: 201 });
   } catch (err) {

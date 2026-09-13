@@ -3,7 +3,18 @@ import { jwtVerify } from 'jose/jwt/verify';
 
 export const SESSION_COOKIE = 'adalat_session';
 const ALG = 'HS256';
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days — a diary is a daily habit
+
+/**
+ * "Remember me" chooses between two lifetimes:
+ *   remembered — 90 days in a persistent cookie, so a personal phone stays
+ *                signed in between hearings
+ *   otherwise  — a session cookie that dies with the browser, which is what
+ *                you want on a shared chamber machine
+ * The JWT's own expiry always matches the cookie, so clearing one cannot leave
+ * the other valid.
+ */
+const REMEMBERED_SECONDS = 60 * 60 * 24 * 90;
+const SESSION_SECONDS = 60 * 60 * 12;
 
 export interface SessionPayload {
   sub: string; // user id, and the `ownerId` every case query is scoped by
@@ -30,12 +41,12 @@ function secretKey(): Uint8Array {
   return cachedKey;
 }
 
-export async function signSession(payload: SessionPayload): Promise<string> {
+export async function signSession(payload: SessionPayload, remember = false): Promise<string> {
   return new SignJWT({ username: payload.username })
     .setProtectedHeader({ alg: ALG })
     .setSubject(payload.sub)
     .setIssuedAt()
-    .setExpirationTime(`${MAX_AGE_SECONDS}s`)
+    .setExpirationTime(`${remember ? REMEMBERED_SECONDS : SESSION_SECONDS}s`)
     .sign(secretKey());
 }
 
@@ -51,10 +62,16 @@ export async function verifySession(token?: string | null): Promise<SessionPaylo
   }
 }
 
-export const sessionCookieOptions = {
-  httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
-  path: '/',
-  maxAge: MAX_AGE_SECONDS,
-} as const;
+/**
+ * Omitting maxAge makes it a session cookie — the browser drops it on close.
+ * That is the deliberate default when "remember me" is left unchecked.
+ */
+export function sessionCookieOptions(remember = false) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    ...(remember ? { maxAge: REMEMBERED_SECONDS } : {}),
+  };
+}

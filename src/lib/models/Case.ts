@@ -14,7 +14,7 @@ const HearingEntrySchema = new Schema(
 const CaseSchema = new Schema(
   {
     // ── The seven core diary fields ───────────────────────────────────────
-    crn: { type: String, required: true, trim: true, uppercase: true, maxlength: 40 },
+    crn: { type: String, trim: true, uppercase: true, maxlength: 40 },
     preDate: { type: Date, default: null }, // previous hearing
     court: { type: String, required: true, trim: true, maxlength: 120 },
     party1: { type: String, required: true, trim: true, maxlength: 160 }, // petitioner / plaintiff
@@ -55,8 +55,15 @@ const CaseSchema = new Schema(
 );
 
 // ── Indexes ─────────────────────────────────────────────────────────────────
-// One CRN per chamber.
-CaseSchema.index({ ownerId: 1, crn: 1 }, { unique: true });
+/**
+ * One CRN per chamber — but only where a CRN exists. A plain unique index
+ * would treat every CRN-less matter as a duplicate of the last one, so the
+ * constraint is filtered to documents that actually carry the field.
+ */
+CaseSchema.index(
+  { ownerId: 1, crn: 1 },
+  { unique: true, partialFilterExpression: { crn: { $type: 'string' } } },
+);
 // The hot path: "what is listed next" — covers Board, Diary and the docket sort.
 CaseSchema.index({ ownerId: 1, status: 1, nextDate: 1 });
 // Pinned-first docket ordering.

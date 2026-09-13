@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useCases } from '@/hooks/useCases';
 import { useStats } from '@/hooks/useStats';
+import { useDiaryPdf } from '@/hooks/useDiaryPdf';
 import { formatLongDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { CaseCard } from '@/components/cases/CaseCard';
 import { useSession } from '@/components/layout/SessionProvider';
-import { ButtonLink } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { ListSkeleton, StatSkeleton } from '@/components/ui/Skeleton';
@@ -34,6 +36,7 @@ function agenda(today: number, overdue: number): string {
 /** The screen the advocate opens at 9:40 a.m.: what is listed, and what is late. */
 export function BoardScreen() {
   const session = useSession();
+  const { busy, shareDay } = useDiaryPdf();
   const { stats, isLoading: statsLoading } = useStats();
   const { cases: today, isLoading: todayLoading } = useCases({ filter: 'today', pageSize: 20 });
   const { cases: upcoming } = useCases({ filter: 'upcoming', pageSize: 5 });
@@ -43,7 +46,7 @@ export function BoardScreen() {
   return (
     <main className="flex flex-1 flex-col pb-nav">
       {/* Hero: full-bleed navy on a phone, an inset card once there is a sidebar. */}
-      <header className="relative overflow-hidden bg-primary pt-safe text-on-primary lg:mx-space-2xl lg:mt-space-2xl lg:rounded-xl lg:pt-0">
+      <header className="brand-panel relative overflow-hidden pt-safe text-white lg:mx-space-2xl lg:mt-space-2xl lg:rounded-xl lg:pt-0">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-16 -top-10 h-56 w-56 rounded-full bg-white/[0.06] blur-2xl"
@@ -62,9 +65,9 @@ export function BoardScreen() {
             <Link
               href="/settings"
               aria-label="Chamber settings"
-              className="press flex h-10 w-10 items-center justify-center rounded-full bg-white/10 font-display text-label-lg uppercase ring-1 ring-white/15"
+              className="press rounded-full ring-1 ring-white/20"
             >
-              {session.username.charAt(0)}
+              <Avatar username={session.username} avatar={session.avatar} size={40} />
             </Link>
           </div>
 
@@ -86,7 +89,7 @@ export function BoardScreen() {
               icon="add"
               size="lg"
               pill
-              className="hidden bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed-dim lg:inline-flex"
+              className="hidden bg-secondary-fixed-dim text-on-secondary-fixed hover:bg-secondary-fixed lg:inline-flex"
             >
               New case
             </ButtonLink>
@@ -122,10 +125,18 @@ export function BoardScreen() {
         {/* Desktop splits the board: the cause list leads, context sits beside it. */}
         <div className="mt-space-xl grid grid-cols-1 gap-space-xl lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start lg:gap-space-2xl">
           <section className="flex flex-col gap-space-md">
-            <SectionHeader
-              title="Today's cause list"
-              meta={`${today.length} matter${today.length === 1 ? '' : 's'}`}
-            />
+            <div className="flex items-center justify-between gap-space-sm">
+              <h2 className="font-display text-headline-md text-primary">Today&rsquo;s cause list</h2>
+              <Button
+                size="sm"
+                variant="tonal"
+                icon="share"
+                loading={busy === 'day'}
+                onClick={() => void shareDay(new Date())}
+              >
+                Share PDF
+              </Button>
+            </div>
             {todayLoading ? (
               <ListSkeleton rows={2} />
             ) : today.length ? (

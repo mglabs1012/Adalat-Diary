@@ -21,6 +21,7 @@ Design language and tokens live in [DESIGN.md](DESIGN.md).
 | Validation | **Zod** | One schema shared by the API and the form. |
 | Data fetching | **SWR** | Stale-while-revalidate on the client, mirroring the service worker's strategy. |
 | Offline | **idb-keyval** + hand-written service worker | Write-behind outbox and a cached docket. No `next-pwa` — ~90 lines beats a build plugin here. |
+| PDF | **jsPDF + autotable**, dynamically imported | Cause lists are generated on the device, so nothing leaves it and no function pays the render cost. ~350 KB, kept out of the first-load bundle. |
 | Icons | Inline SVG (`components/ui/Icon.tsx`) | The Material Symbols font is ~2 MB and cannot be relied on offline. |
 
 ---
@@ -47,6 +48,7 @@ cannot reach the database. Check `/api/health` to see the connection state at an
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint (flat config) |
+| `npm run migrate:crn` | One-off: make the CRN index partial (pre-0.5 databases only) |
 | `node scripts/generate-icons.mjs` | Regenerate the PWA icon set |
 
 ---
@@ -57,9 +59,9 @@ Seven fields carry the diary. Everything else is optional context.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `crn` | string, **required** | Case Registration Number. Unique per chamber, uppercased. |
+| `crn` | string, optional | Case Registration Number. Unique per chamber where present — a matter can be opened before the registry issues one. |
 | `preDate` | Date \| null | Previous hearing date. |
-| `court` | string, **required** | Forum. Free text with suggestions. |
+| `court` | string, **required** | One of the 93 court codes in `lib/constants/courts.ts`, chosen from a grouped dropdown. |
 | `party1` | string, **required** | Petitioner / Plaintiff / Complainant. |
 | `party2` | string, **required** | Respondent / Defendant / Accused. |
 | `stage` | enum, **required** | One of twelve procedural stages. |
@@ -71,7 +73,7 @@ Plus: `caseNo`, `courtRoom`, `judge`, `purpose`, `appearingFor`, `clientName`,
 ### Indexes
 
 ```js
-{ ownerId: 1, crn: 1 }                 // unique — one CRN per chamber
+{ ownerId: 1, crn: 1 }                 // unique, PARTIAL — only where crn exists
 { ownerId: 1, status: 1, nextDate: 1 } // the hot path: board, diary, docket sort
 { ownerId: 1, pinned: -1, nextDate: 1 }// pinned-first docket
 { crn, caseNo, party1, party2, court, judge } // weighted text index for search
@@ -111,7 +113,7 @@ content beneath them. See [DESIGN.md](DESIGN.md) for the full rationale.
 | `/cases/[id]` | **Case detail** | Dossier card, next-date panel, Overview / History tabs, pin, share, edit, delete. |
 | `/cases/[id]/edit` | **Edit** | Same form, pre-filled. |
 | `/diary` | **Diary** | Every upcoming date grouped chronologically, overdue pinned on top. |
-| `/settings` | **Chamber** | Account and sign-out, light/dark/system theme, sync status, pending-write queue, install prompt, CSV export. |
+| `/settings` | **Chamber** | Profile picture, sign-out, light/dark/system theme, sync status, pending writes, PDF share, CSV import/export, install prompt. |
 | `/offline` | **Offline** | Served by the SW only when a navigation misses the cache. Auto-returns when connectivity comes back. |
 | `not-found.tsx` | **404** | "This file is not on the record." |
 | `error.tsx` | **Error** | Leads with "your case records are safe", offers retry + digest. |
@@ -119,6 +121,75 @@ content beneath them. See [DESIGN.md](DESIGN.md) for the full rationale.
 The **"Record next date"** sheet on the detail screen is the app's most-used write: it moves
 `nextDate` into `preDate`, sets the new date, updates the stage, and appends to the
 procedural history in one atomic MongoDB update.
+
+---
+
+## Courts
+
+`lib/constants/courts.ts` holds the 93 establishments this chamber practises in — the Ajmer
+district headquarters and its tehsil courts — as the registry's own codes (`ADJ1`,
+`KISHANGARH-ACJM2`, `BEAWAR-NI`…). The codes are stored verbatim, because that is what goes
+on a cause list.
+
+The court field is a **dropdown** with a filter box, grouped by establishment so 93 options
+stay navigable:
+
+| Group | Courts |
+| --- | --- |
+| Ajmer — District Headquarters | 61 |
+| Kishangarh | 7 |
+| Nasirabad | 3 |
+| Beawar | 12 |
+| Kekri | 5 |
+| Other tehsils | 5 |
+
+A record carrying a court that is no longer on the list keeps it as a selectable option, so
+editing an old matter cannot silently move it to another court. The CSV importer matches
+cells against the same list, tolerating case and spacing (`adj 1` → `ADJ1`), and reports a
+row naming a court that does not exist rather than filing it in the wrong place.
+
+---
+
+## Sharing & import
+
+### PDF cause lists
+
+Three documents, all built in the browser by `lib/pdf/diary.ts` and handed to the Web Share
+API — on Android that puts the file straight into WhatsApp; everywhere else it downloads.
+
+| Document | Where | Contents |
+| --- | --- | --- |
+| **Day cause list** | Diary → the share icon on any day heading; Board → *Share PDF* | One table of every matter carrying that date |
+| **Monthly diary** | Diary → *Share PDF*; Chamber → *Share as PDF* | **A separate table per day**, each under its own dated heading, in date order |
+| **Case sheet** | Case detail → *PDF* | The full record, its chamber notes and its procedural history |
+
+Each is drawn in the app's own colours — navy header band with the ochre rule, tabular
+figures, zebra rows — with a footer carrying the chamber, the generation time and
+`Page n of m`. jsPDF is `import()`ed at the moment you press share, so a session that never
+prints never downloads it.
+
+A single record also shares as **plain text** (the cause slip) from the share icon on any
+docket card, or from the app bar on the case detail screen.
+
+### CSV import
+
+Chamber → *Import from CSV*, or the *Import* button on the docket. A three-step dialog:
+drop the file, review what was read, confirm.
+
+- **Drag and drop**, or a file picker. Up to 500 rows.
+- **The accepted format is on the first screen**, not behind a help link — every column,
+  whether it is required, and a worked example — with a one-click template download.
+- Headers may be in **any order and any casing**, and common aliases are understood
+  (`Petitioner` → Party 1, `NDOH` → Next Date). Unrecognised columns are reported and
+  ignored rather than failing the import.
+- Dates accept `25/09/2026`, `25-09-2026` and `2026-09-25`. Stages match on label, short
+  name or id.
+- Review shows **per-row reasons** for anything that will be skipped — a missing party, an
+  unreadable date, a CRN duplicated inside the file — and a preview of what will land.
+- *Update matters that already exist* matches on CRN; left off, existing matters are skipped.
+
+Parsing is RFC 4180, so quoted fields containing commas and newlines survive, and Excel's
+UTF-8 BOM is stripped.
 
 ---
 
@@ -140,6 +211,13 @@ advocate's diary does not need one, and every extra field is another thing to ge
   themselves and answer `401` JSON rather than redirecting.
 - **Scoping**: the JWT `sub` *is* the `ownerId` on every case. There is no query in the app
   that is not scoped by it, so one account can never read another's docket.
+- **"Keep me signed in"** picks the lifetime. Checked, the cookie persists for 90 days on
+  that device. Unchecked, it is a *session* cookie with no expiry at all — the browser drops
+  it on close, which is what you want on a shared chamber machine. The JWT's own expiry
+  always matches the cookie, so clearing one cannot leave the other valid.
+- **Profile picture**: cropped to a square and scaled to 256px in the browser, then stored
+  as a data URL on the user document. A 4 MB camera photo becomes a ~20 KB upload, and the
+  server needs no image library — which matters on a cold-starting function.
 
 ---
 
@@ -329,14 +407,19 @@ adalat-diary/
     │   │                         AppProviders · SyncProvider · SessionProvider
     │   │                         Hydrate · ThemeScript
     │   ├── screens/              one file per screen, all client components
-    │   ├── cases/                CaseCard · CaseForm · AdjournSheet · StageBadge · DateChip
-    │   └── ui/                   Button · Form (the field kit) · Icon · Sheet · Toaster
-    │                             SearchBar · SegmentedTabs · EmptyState · Skeleton
+    │   ├── cases/                CaseCard · CaseForm · AdjournSheet · StageBadge
+    │   │                         DateChip · ImportDialog · ExportDialog
+    │   ├── settings/             ProfileCard
+    │   └── ui/                   Button · Form (the field kit) · Select · DatePicker
+    │                             Popover · Icon · Sheet · Toaster · SearchBar
+    │                             SegmentedTabs · EmptyState · Skeleton · Avatar
     ├── hooks/                    useCases · useCase · useStats · useOnline
     │                             useToast · useTheme · useInstallPrompt
     ├── lib/
     │   ├── api/                  fetch client · wire serializer · SWR cache keys
     │   ├── auth/                 scrypt hashing · JWT session · server helpers
+    │   ├── csv/                  RFC 4180 parser · column mapping · row validation
+    │   ├── pdf/                  cause lists, monthly diary, case sheets
     │   ├── data/                 the one server-side reader, shared by API + RSC
     │   │                         plus `prefetch()` — seeding may fail without
     │   │                         taking the screen down
