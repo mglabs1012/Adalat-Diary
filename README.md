@@ -49,6 +49,7 @@ cannot reach the database. Check `/api/health` to see the connection state at an
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint (flat config) |
 | `npm run migrate:crn` | One-off: make the CRN index partial (pre-0.5 databases only) |
+| `npm run csv:prompt` | Regenerate `docs/csv-import-prompt.md` from the live court and stage lists |
 | `node scripts/generate-icons.mjs` | Regenerate the PWA icon set |
 
 ---
@@ -64,7 +65,7 @@ Seven fields carry the diary. Everything else is optional context.
 | `court` | string, **required** | One of the 93 court codes in `lib/constants/courts.ts`, chosen from a grouped dropdown. |
 | `party1` | string, **required** | Petitioner / Plaintiff / Complainant. |
 | `party2` | string, **required** | Respondent / Defendant / Accused. |
-| `stage` | enum, **required** | One of twelve procedural stages. |
+| `stage` | enum, **required** | One of 30 procedural stages (`lib/constants/stages.ts`), defaulting to Notice / Summons. |
 | `nextDate` | Date \| null | Next date of hearing. |
 
 Plus: `caseNo`, `courtRoom`, `judge`, `purpose`, `appearingFor`, `clientName`,
@@ -183,13 +184,20 @@ drop the file, review what was read, confirm.
   (`Petitioner` → Party 1, `NDOH` → Next Date). Unrecognised columns are reported and
   ignored rather than failing the import.
 - Dates accept `25/09/2026`, `25-09-2026` and `2026-09-25`. Stages match on label, short
-  name or id.
+  name, id or the register's own short codes — `CR` → Cheque Report, `PF` → Process Fee,
+  `WS` and `Reply` → Written Statement / Reply, `Judgement` → Judgment.
 - Review shows **per-row reasons** for anything that will be skipped — a missing party, an
   unreadable date, a CRN duplicated inside the file — and a preview of what will land.
 - *Update matters that already exist* matches on CRN; left off, existing matters are skipped.
 
 Parsing is RFC 4180, so quoted fields containing commas and newlines survive, and Excel's
 UTF-8 BOM is stripped.
+
+**Handing the job to someone else:** [`docs/csv-import-prompt.md`](docs/csv-import-prompt.md)
+is a self-contained brief — every column, the date formats, all 93 court codes, all 30 stage
+names with their accepted short codes, and a worked example. Copy it to a clerk or paste it
+into an assistant. It is **generated from the app's own constants** (`npm run csv:prompt`),
+so it cannot drift from what the importer actually accepts.
 
 ---
 
@@ -418,7 +426,7 @@ adalat-diary/
     ├── lib/
     │   ├── api/                  fetch client · wire serializer · SWR cache keys
     │   ├── auth/                 scrypt hashing · JWT session · server helpers
-    │   ├── csv/                  RFC 4180 parser · column mapping · row validation
+    │   ├── csv/                  column spec · RFC 4180 parser · row validation
     │   ├── pdf/                  cause lists, monthly diary, case sheets
     │   ├── data/                 the one server-side reader, shared by API + RSC
     │   │                         plus `prefetch()` — seeding may fail without

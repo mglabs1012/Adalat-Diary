@@ -215,13 +215,22 @@ and the supporting copy disappeared.
 
 Low-saturation pastels, so a docket of twenty cards still reads calmly:
 
+The 30 stages come from this chamber's own cause register, ordered as a matter travels.
+Five colour groups carry them:
+
 | Group | Stages | Light |
 | --- | --- | --- |
-| Notice | Appearance, Notice / Summons | `#FEF3C7` on `#92400E` |
-| Filing | Written statement, Framing of issues, Execution | `#E2E8F0` on `#334155` |
-| Evidence | Evidence, Cross examination | `#DBEAFE` on `#1E40AF` |
-| Arguments | Arguments, Final arguments | `#EDE9FE` on `#5B21B6` |
-| Order | Judgment, Order, Disposed | `#DCFCE7` on `#166534` |
+| Notice | Process Fee, Notice / Summons, Notice, Summons, Service | `#FEF3C7` on `#92400E` |
+| Filing | Plaint, Application, Cognizance, Written Statement / Reply, Framing of Issues, Compliance, Cheque Report, Final Report, Decree Preparation, Appeal, Execution | `#E2E8F0` on `#334155` |
+| Evidence | Evidence, Prosecution Evidence, Defence Evidence, Cross Examination | `#DBEAFE` on `#1E40AF` |
+| Arguments | Regular Hearing, Hearing, Arguments, Stay | `#EDE9FE` on `#5B21B6` |
+| Order | Order, Judgment, Decreed, Preliminary Decree, Final Decree, Disposed | `#DCFCE7` on `#166534` |
+
+**Notice / Summons, Notice and Summons are three distinct stages**, not one — a matter listed
+for both is not the same as one listed for either alone, and the register distinguishes them.
+Likewise Regular Hearing and Hearing.
+
+New matters default to **Notice / Summons**.
 
 ## Typography
 

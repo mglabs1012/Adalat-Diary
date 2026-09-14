@@ -1,5 +1,5 @@
 import { Schema, model, models, type Model, type InferSchemaType } from 'mongoose';
-import { STAGE_IDS } from '@/lib/constants/stages';
+import { DEFAULT_STAGE, STAGE_IDS } from '@/lib/constants/stages';
 
 const HearingEntrySchema = new Schema(
   {
@@ -19,7 +19,7 @@ const CaseSchema = new Schema(
     court: { type: String, required: true, trim: true, maxlength: 120 },
     party1: { type: String, required: true, trim: true, maxlength: 160 }, // petitioner / plaintiff
     party2: { type: String, required: true, trim: true, maxlength: 160 }, // respondent / defendant
-    stage: { type: String, enum: STAGE_IDS, required: true, default: 'appearance' },
+    stage: { type: String, enum: STAGE_IDS, required: true, default: DEFAULT_STAGE },
     nextDate: { type: Date, default: null },
 
     // ── Chamber context ───────────────────────────────────────────────────

@@ -216,7 +216,7 @@ export function SettingsScreen() {
         </div>
 
         <p className="px-space-xs pb-space-md text-center text-label-md text-on-surface-variant">
-          Adalat Diary · v0.6.0
+          Adalat Diary · v0.8.0
           <br />
           Your case records stay in your own MongoDB.
         </p>

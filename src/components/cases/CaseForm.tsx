@@ -6,7 +6,7 @@ import type { CaseRecord, PartySide, StageId } from '@/types/case';
 import { ApiError, casesApi } from '@/lib/api/client';
 import { enqueue } from '@/lib/offline/outbox';
 import { COURT_GROUPS, PURPOSE_SUGGESTIONS, isKnownCourt } from '@/lib/constants/courts';
-import { STAGES } from '@/lib/constants/stages';
+import { DEFAULT_STAGE, STAGES } from '@/lib/constants/stages';
 import { toInputDate } from '@/lib/utils/date';
 import { revalidateDiary } from '@/hooks/useCases';
 import { useOnline } from '@/hooks/useOnline';
@@ -61,7 +61,7 @@ export function CaseForm({ initial }: CaseFormProps) {
     court: initial?.court ?? '',
     party1: initial?.party1 ?? '',
     party2: initial?.party2 ?? '',
-    stage: (initial?.stage ?? 'appearance') as StageId,
+    stage: (initial?.stage ?? DEFAULT_STAGE) as StageId,
     preDate: toInputDate(initial?.preDate),
     nextDate: toInputDate(initial?.nextDate),
     caseNo: initial?.caseNo ?? '',

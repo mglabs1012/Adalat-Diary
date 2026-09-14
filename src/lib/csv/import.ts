@@ -1,5 +1,6 @@
+import { CSV_COLUMNS } from './columns';
 import { matchCourt } from '@/lib/constants/courts';
-import { STAGES, type StageMeta } from '@/lib/constants/stages';
+import { DEFAULT_STAGE, STAGES, type StageMeta } from '@/lib/constants/stages';
 import type { StageId } from '@/types/case';
 
 /**
@@ -11,39 +12,6 @@ import type { StageId } from '@/types/case';
  * missing a party, or naming a court that does not exist, is reported rather
  * than guessed at.
  */
-
-export interface ColumnSpec {
-  /** The canonical header we print in the template. */
-  header: string;
-  key: string;
-  required: boolean;
-  /** Alternative spellings accepted on import. */
-  aliases: string[];
-  example: string;
-  note?: string;
-}
-
-export const CSV_COLUMNS: readonly ColumnSpec[] = [
-  { header: 'CRN', key: 'crn', required: false, aliases: ['case registration number', 'case ref', 'cnr'], example: 'DLCT01-004521-2026', note: 'Optional' },
-  { header: 'Pre Date', key: 'preDate', required: false, aliases: ['previous date', 'prev date', 'last date'], example: '12/08/2026', note: 'Previous hearing' },
-  { header: 'Court', key: 'court', required: true, aliases: ['forum'], example: 'ADJ1', note: 'Must be a court code' },
-  { header: 'Party 1', key: 'party1', required: true, aliases: ['petitioner', 'plaintiff', 'party1'], example: 'John Doe' },
-  { header: 'Party 2', key: 'party2', required: true, aliases: ['respondent', 'defendant', 'party2'], example: 'Jane Smith & Ors.' },
-  { header: 'Stage', key: 'stage', required: false, aliases: [], example: 'Evidence', note: 'Defaults to Appearance' },
-  { header: 'Next Date', key: 'nextDate', required: false, aliases: ['ndoh', 'next hearing'], example: '25/09/2026' },
-  { header: 'Case No', key: 'caseNo', required: false, aliases: ['case number'], example: 'CS/412/2026' },
-  { header: 'Court Room', key: 'courtRoom', required: false, aliases: ['room'], example: 'Court Room 5' },
-  { header: 'Judge', key: 'judge', required: false, aliases: ['presiding judge'], example: 'Sh. R. K. Verma, ADJ' },
-  { header: 'Listed For', key: 'purpose', required: false, aliases: ['purpose', 'for'], example: 'Cross examination' },
-  { header: 'Client Name', key: 'clientName', required: false, aliases: ['client'], example: 'John Doe' },
-  { header: 'Client Phone', key: 'clientPhone', required: false, aliases: ['phone', 'mobile'], example: '9876543210' },
-  { header: 'Notes', key: 'notes', required: false, aliases: ['remarks'], example: 'Brief facts' },
-] as const;
-
-export const CSV_TEMPLATE = [
-  CSV_COLUMNS.map((c) => c.header).join(','),
-  CSV_COLUMNS.map((c) => (c.example.includes(',') ? `"${c.example}"` : c.example)).join(','),
-].join('\n');
 
 /* ── Parsing ──────────────────────────────────────────────────────────────── */
 
@@ -150,11 +118,13 @@ for (const s of STAGES as readonly StageMeta[]) {
   STAGE_LOOKUP.set(normalise(s.id), s.id);
   STAGE_LOOKUP.set(normalise(s.label), s.id);
   STAGE_LOOKUP.set(normalise(s.short), s.id);
+  // The register is kept in short codes — CR, PF, WS — so accept those too.
+  for (const alias of s.aliases ?? []) STAGE_LOOKUP.set(normalise(alias), s.id);
 }
 
 export function parseStage(input: string): StageId | null {
   const value = normalise(input);
-  if (!value) return 'appearance';
+  if (!value) return DEFAULT_STAGE;
   return STAGE_LOOKUP.get(value) ?? null;
 }
 
@@ -215,7 +185,7 @@ export function parseImportFile(text: string): ParsedCsv {
     const rawStage = at('stage');
     const stage = parseStage(rawStage);
     if (stage === null) errors.push(`Unknown stage "${rawStage}"`);
-    data.stage = stage ?? 'appearance';
+    data.stage = stage ?? DEFAULT_STAGE;
 
     if (data.preDate && data.nextDate && data.nextDate < data.preDate) {
       errors.push('Next date falls before the previous date');

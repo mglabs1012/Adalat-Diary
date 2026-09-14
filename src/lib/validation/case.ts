@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { STAGE_IDS } from '@/lib/constants/stages';
+import { DEFAULT_STAGE, STAGE_IDS } from '@/lib/constants/stages';
 
 const trimmed = (max: number) => z.string().trim().min(1).max(max);
 /**
@@ -29,7 +29,7 @@ export const caseCreateSchema = z.object({
   court: trimmed(120),
   party1: trimmed(160),
   party2: trimmed(160),
-  stage: z.enum(STAGE_IDS).default('appearance'),
+  stage: z.enum(STAGE_IDS).default(DEFAULT_STAGE),
   preDate: dateField,
   nextDate: dateField,
 

@@ -1,12 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import {
-  CSV_COLUMNS,
-  CSV_TEMPLATE,
-  parseImportFile,
-  type ParsedCsv,
-} from '@/lib/csv/import';
+import { CSV_COLUMNS, CSV_TEMPLATE } from '@/lib/csv/columns';
+import { parseImportFile, type ParsedCsv } from '@/lib/csv/import';
 import { download } from '@/lib/utils/share';
 import { cn } from '@/lib/utils/cn';
 import { revalidateDiary } from '@/hooks/useCases';
