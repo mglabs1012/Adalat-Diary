@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
     for (const row of rows) {
       try {
         const data = caseCreateSchema.parse(row.data);
+        // A register marks closure in the stage column; the app also tracks it
+        // as a status, so infer it rather than leaving closed matters active.
+        if (data.stage === 'disposed' && !data.status) data.status = 'disposed';
         // Matching is by CRN. A row without one is always a new matter.
         const existing = data.crn ? await CaseModel.exists({ ownerId, crn: data.crn }) : null;
 

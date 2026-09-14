@@ -194,7 +194,7 @@ Parsing is RFC 4180, so quoted fields containing commas and newlines survive, an
 UTF-8 BOM is stripped.
 
 **Handing the job to someone else:** [`docs/csv-import-prompt.md`](docs/csv-import-prompt.md)
-is a self-contained brief — every column, the date formats, all 93 court codes, all 30 stage
+is a self-contained brief — every column, the date formats, all 96 court codes, all 30 stage
 names with their accepted short codes, and a worked example. Copy it to a clerk or paste it
 into an assistant. It is **generated from the app's own constants** (`npm run csv:prompt`),
 so it cannot drift from what the importer actually accepts.

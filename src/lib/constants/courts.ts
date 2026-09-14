@@ -44,6 +44,10 @@ export const COURT_GROUPS: readonly CourtGroup[] = [
       'JM2',
       'JM3',
       'JM4',
+      // Used by the chamber's register but absent from the original code list.
+      'JM6',
+      'MMP',
+      'MW',
       'NI1',
       'NI2',
       'NI3',

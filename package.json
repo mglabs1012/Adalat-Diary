@@ -1,6 +1,6 @@
 {
   "name": "adalat-diary",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Adalat Diary - a court diary for advocates. Case records, cause lists and next dates, offline-first.",
   "scripts": {
