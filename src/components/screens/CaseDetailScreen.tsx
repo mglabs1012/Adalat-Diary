@@ -7,7 +7,7 @@ import { getStage } from '@/lib/constants/stages';
 import { caseRef, causeTitle, clientOf, sideLabel } from '@/lib/utils/case';
 import { formatDate, relativeDay, urgencyOf } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
-import { revalidateDiary } from '@/hooks/useCases';
+import { removeCachedCase, revalidateDiary, updateCachedCase } from '@/hooks/useCases';
 import { useCase } from '@/hooks/useCase';
 import { useDiaryPdf } from '@/hooks/useDiaryPdf';
 import { toast } from '@/hooks/useToast';
@@ -68,7 +68,8 @@ export function CaseDetailScreen({ id }: { id: string }) {
     await mutate({ ...record, pinned: next }, { revalidate: false });
     try {
       await casesApi.update(record.id, { pinned: next });
-      await revalidateDiary();
+      await updateCachedCase({ ...record, pinned: next });
+      void revalidateDiary();
       toast(next ? 'Pinned to the top of your docket' : 'Unpinned');
     } catch {
       await mutate();
@@ -84,7 +85,8 @@ export function CaseDetailScreen({ id }: { id: string }) {
     if (!record) return;
     try {
       await casesApi.remove(record.id);
-      await revalidateDiary();
+      await removeCachedCase(record.id);
+      void revalidateDiary();
       toast('Case removed from your diary');
       router.replace('/cases');
     } catch {
@@ -360,7 +362,7 @@ export function CaseDetailScreen({ id }: { id: string }) {
         record={record}
         open={adjourning}
         onClose={() => setAdjourning(false)}
-        onDone={() => void mutate()}
+        onDone={(saved) => void mutate(saved, { revalidate: !saved })}
       />
 
       <Sheet

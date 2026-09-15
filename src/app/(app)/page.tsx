@@ -7,8 +7,8 @@ import { requireOwnerId } from '@/lib/utils/api';
 
 export const metadata = { title: 'Board' };
 
-const TODAY = { filter: 'today', page: 1, pageSize: 20 } as const;
-const UPCOMING = { filter: 'upcoming', page: 1, pageSize: 5 } as const;
+const TODAY = { filter: 'today', page: 1, pageSize: 20, includeTotal: false } as const;
+const UPCOMING = { filter: 'upcoming', page: 1, pageSize: 5, includeTotal: false } as const;
 
 export default async function HomePage() {
   const ownerId = await requireOwnerId();

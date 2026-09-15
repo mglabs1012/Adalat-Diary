@@ -1,4 +1,5 @@
 import { BottomNav } from './BottomNav';
+import { RouteTransition } from './RouteTransition';
 import { SideNav } from './SideNav';
 
 /**
@@ -14,7 +15,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SideNav />
-      <div className="flex min-h-[100dvh] flex-1 flex-col lg:pl-side-nav">{children}</div>
+      <div className="flex min-h-[100dvh] flex-1 flex-col lg:pl-side-nav">
+        <RouteTransition>{children}</RouteTransition>
+      </div>
       <BottomNav />
     </>
   );

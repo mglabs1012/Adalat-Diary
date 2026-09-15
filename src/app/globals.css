@@ -312,9 +312,17 @@
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
     animation: shimmer 1.4s infinite;
   }
+
+  /* Four small dots rise in sequence: quick to read, calmer than a spinner. */
+  .wavy-loader-dot {
+    animation: loader-wave 760ms ease-in-out infinite alternate;
+  }
 }
 
 @layer utilities {
+  .route-enter {
+    animation: route-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -325,6 +333,34 @@
   .scrim {
     background: var(--scrim);
     backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes loader-wave {
+  from {
+    transform: translateY(2px) scale(0.8);
+    opacity: 0.45;
+  }
+  to {
+    transform: translateY(-3px) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 

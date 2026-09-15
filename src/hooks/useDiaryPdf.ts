@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import type { CaseListResponse, CaseRecord } from '@/types/case';
+import type { CaseListItem, CaseListResponse, CaseRecord } from '@/types/case';
 import { casesKey } from '@/lib/api/keys';
 import { caseRef, causeSlip } from '@/lib/utils/case';
 import { formatDate, toInputDate } from '@/lib/utils/date';
@@ -17,7 +17,14 @@ function report(outcome: ShareOutcome, noun: string) {
   else if (outcome === 'downloaded') toast(`${noun} saved to your device`, 'success');
 }
 
-async function fetchRange(from: string, to: string): Promise<CaseRecord[]> {
+/** The fast, stateless share path used on every case card. */
+export async function shareCaseText(record: CaseListItem | CaseRecord): Promise<void> {
+  const outcome = await shareText(caseRef(record), causeSlip(record, formatDate));
+  if (outcome === 'shared') toast('Shared', 'success');
+  else if (outcome === 'downloaded') toast('Copied to clipboard', 'success');
+}
+
+async function fetchRange(from: string, to: string): Promise<CaseListItem[]> {
   const res = await fetch(
     casesKey({ filter: 'range', from, to, page: 1, pageSize: EXPORT_LIMIT }),
   );
@@ -27,8 +34,8 @@ async function fetchRange(from: string, to: string): Promise<CaseRecord[]> {
 }
 
 /** Groups a flat list into one bucket per calendar day, in date order. */
-function groupByDay(cases: CaseRecord[]) {
-  const map = new Map<string, { key: string; date: string; cases: CaseRecord[] }>();
+function groupByDay(cases: CaseListItem[]) {
+  const map = new Map<string, { key: string; date: string; cases: CaseListItem[] }>();
   for (const c of cases) {
     if (!c.nextDate) continue;
     const key = c.nextDate.slice(0, 10);
@@ -109,13 +116,6 @@ export function useDiaryPdf() {
     },
     [meta],
   );
-
-  /** The quick one: a plain-text cause slip for WhatsApp. */
-  const shareCaseText = useCallback(async (record: CaseRecord) => {
-    const outcome = await shareText(caseRef(record), causeSlip(record, formatDate));
-    if (outcome === 'shared') toast('Shared', 'success');
-    else if (outcome === 'downloaded') toast('Copied to clipboard', 'success');
-  }, []);
 
   return { busy, shareDay, shareMonth, shareCasePdf, shareCaseText };
 }

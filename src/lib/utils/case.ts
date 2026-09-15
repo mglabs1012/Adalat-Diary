@@ -24,7 +24,10 @@ export function sideLabel(side?: PartySide): string {
 }
 
 /** Text for the WhatsApp / share-sheet cause slip. */
-export function causeSlip(c: CaseRecord, formatDate: (d?: string | null) => string): string {
+export function causeSlip(
+  c: Pick<CaseRecord, 'crn' | 'caseNo' | 'party1' | 'party2' | 'court' | 'courtRoom' | 'stage' | 'nextDate' | 'purpose'>,
+  formatDate: (d?: string | null) => string,
+): string {
   return [
     `${causeTitle(c)}`,
     c.crn ? `CRN: ${c.crn}${c.caseNo ? ` | ${c.caseNo}` : ''}` : c.caseNo ? `Case: ${c.caseNo}` : '',

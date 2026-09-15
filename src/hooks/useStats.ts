@@ -10,8 +10,10 @@ const ZERO: DiaryStats = { today: 0, tomorrow: 0, thisWeek: 0, active: 0, overdu
 
 export function useStats() {
   const { data, error, isLoading, mutate } = useSWR<DiaryStats>('/api/stats', fetcher, {
-    revalidateOnFocus: true,
-    dedupingInterval: 10_000,
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+    dedupingInterval: 30_000,
+    isPaused: () => typeof navigator !== 'undefined' && !navigator.onLine,
   });
 
   useEffect(() => {
@@ -19,7 +21,8 @@ export function useStats() {
   }, [data]);
 
   useEffect(() => {
-    if (!error || data) return;
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (data || (!error && !offline)) return;
     void readStats().then((cached) => {
       if (cached) void mutate(cached, { revalidate: false });
     });

@@ -8,7 +8,7 @@ import { STAGES } from '@/lib/constants/stages';
 import { PURPOSE_SUGGESTIONS } from '@/lib/constants/courts';
 import { addDays, formatDate, toInputDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
-import { revalidateDiary } from '@/hooks/useCases';
+import { revalidateDiary, updateCachedCase } from '@/hooks/useCases';
 import { useOnline } from '@/hooks/useOnline';
 import { toast } from '@/hooks/useToast';
 import { Sheet } from '@/components/ui/Sheet';
@@ -20,7 +20,7 @@ interface AdjournSheetProps {
   record: CaseRecord;
   open: boolean;
   onClose: () => void;
-  onDone: () => void;
+  onDone: (record?: CaseRecord) => void;
 }
 
 const QUICK_JUMPS = [
@@ -53,6 +53,7 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
 
     setSaving(true);
     const payload = { nextDate: disposed ? null : nextDate, stage, purpose, note, disposed };
+    let saved: CaseRecord | undefined;
 
     try {
       if (!online) {
@@ -64,11 +65,12 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
         });
         toast('Recorded on device — will sync when online', 'success');
       } else {
-        await casesApi.adjourn(record.id, payload);
-        await revalidateDiary();
+        saved = await casesApi.adjourn(record.id, payload);
+        await updateCachedCase(saved);
+        void revalidateDiary();
         toast(disposed ? 'Matter marked disposed' : 'Next date recorded', 'success');
       }
-      onDone();
+      onDone(saved);
       onClose();
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Could not record the date', 'error');

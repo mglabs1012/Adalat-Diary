@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { CaseRecord } from '@/types/case';
+import type { CaseListItem } from '@/types/case';
 import { daysUntil, formatDate, relativeDay } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { useCases } from '@/hooks/useCases';
@@ -17,7 +17,7 @@ import { Icon } from '@/components/ui/Icon';
 interface DayGroup {
   key: string;
   date: string;
-  cases: CaseRecord[];
+  cases: CaseListItem[];
 }
 
 /** Chronological cause list: every upcoming date, grouped, overdue on top. */

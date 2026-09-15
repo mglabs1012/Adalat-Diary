@@ -8,7 +8,12 @@ export function useCase(id?: string, fallbackData?: CaseRecord) {
   const { data, error, isLoading, mutate } = useSWR<CaseRecord>(
     id ? `/api/cases/${id}` : null,
     fetcher,
-    { fallbackData, revalidateOnFocus: true, dedupingInterval: 3000 },
+    {
+      fallbackData,
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      dedupingInterval: 12_000,
+    },
   );
 
   return { record: data, error, isLoading: isLoading && !data, mutate };

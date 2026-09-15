@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { Icon, type IconName } from './Icon';
+import { WavyLoader } from './WavyLoader';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'tonal' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -50,7 +51,7 @@ function Inner({ icon, trailingIcon, loading, children, size = 'md' }: CommonPro
   return (
     <>
       {loading ? (
-        <Icon name="sync" size={glyph} className="animate-spin" />
+        <WavyLoader size={size === 'sm' ? 'sm' : 'md'} label="Working" className="text-current" />
       ) : icon ? (
         <Icon name={icon} size={glyph} />
       ) : null}
@@ -105,4 +106,3 @@ export function ButtonLink({
     </Link>
   );
 }
-

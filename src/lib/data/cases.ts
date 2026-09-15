@@ -2,7 +2,7 @@ import 'server-only';
 import { isValidObjectId, type FilterQuery } from 'mongoose';
 import { connectDB } from '@/lib/db/mongodb';
 import { CaseModel, type CaseDoc } from '@/lib/models/Case';
-import { serialize } from '@/lib/api/serialize';
+import { serialize, serializeListItem } from '@/lib/api/serialize';
 import { addDays, endOfDay, startOfDay } from '@/lib/utils/date';
 import type { CaseFilter, CaseListResponse, CaseRecord, DiaryStats } from '@/types/case';
 
@@ -72,10 +72,12 @@ export interface ListOptions {
   to?: string;
   page: number;
   pageSize: number;
+  /** Summary-only screens do not render totals, so avoid a count scan. */
+  includeTotal?: boolean;
 }
 
 export async function listCases(ownerId: string, opts: ListOptions): Promise<CaseListResponse> {
-  const { filter, q, stage, from, to, page, pageSize } = opts;
+  const { filter, q, stage, from, to, page, pageSize, includeTotal = true } = opts;
 
   await connectDB();
   const query = buildQuery(ownerId, filter, q, stage, { from, to });
@@ -90,17 +92,28 @@ export async function listCases(ownerId: string, opts: ListOptions): Promise<Cas
         ? { nextDate: 1, crn: 1 }
         : { pinned: -1, nextDate: 1, updatedAt: -1 };
 
-  const [docs, total] = await Promise.all([
-    CaseModel.find(query).sort(sort).skip(skip).limit(pageSize).lean().exec(),
-    CaseModel.countDocuments(query).exec(),
-  ]);
+  const listQuery = CaseModel.find(query)
+    .select('crn caseNo court courtRoom party1 party2 stage preDate nextDate purpose pinned status')
+    .sort(sort)
+    .skip(skip)
+    // One extra row gives no-total views an accurate `hasMore` without a
+    // second collection scan.
+    .limit(pageSize + (includeTotal ? 0 : 1))
+    .lean()
+    .exec();
+
+  const [rawDocs, total] = includeTotal
+    ? await Promise.all([listQuery, CaseModel.countDocuments(query).exec()])
+    : [await listQuery, undefined];
+  const hasMore = includeTotal ? skip + rawDocs.length < (total ?? 0) : rawDocs.length > pageSize;
+  const docs = hasMore && !includeTotal ? rawDocs.slice(0, pageSize) : rawDocs;
 
   return {
-    items: docs.map(serialize),
-    total,
+    items: docs.map(serializeListItem),
+    total: total ?? docs.length,
     page,
     pageSize,
-    hasMore: skip + docs.length < total,
+    hasMore,
   };
 }
 

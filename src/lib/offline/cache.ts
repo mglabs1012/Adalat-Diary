@@ -1,5 +1,5 @@
 import { get, set } from 'idb-keyval';
-import type { CaseRecord, DiaryStats } from '@/types/case';
+import type { CaseListItem, DiaryStats } from '@/types/case';
 
 /**
  * Last-known-good snapshot so the Board and Docket render instantly on cold
@@ -13,17 +13,17 @@ interface Snapshot<T> {
   savedAt: number;
 }
 
-export async function saveCases(key: string, items: CaseRecord[]): Promise<void> {
+export async function saveCases(key: string, items: CaseListItem[]): Promise<void> {
   try {
-    await set(`${CASES_KEY}:${key}`, { data: items, savedAt: Date.now() } satisfies Snapshot<CaseRecord[]>);
+    await set(`${CASES_KEY}:${key}`, { data: items, savedAt: Date.now() } satisfies Snapshot<CaseListItem[]>);
   } catch {
     /* quota or private mode - the network path still works */
   }
 }
 
-export async function readCases(key: string): Promise<CaseRecord[] | null> {
+export async function readCases(key: string): Promise<CaseListItem[] | null> {
   try {
-    const snap = await get<Snapshot<CaseRecord[]>>(`${CASES_KEY}:${key}`);
+    const snap = await get<Snapshot<CaseListItem[]>>(`${CASES_KEY}:${key}`);
     return snap?.data ?? null;
   } catch {
     return null;

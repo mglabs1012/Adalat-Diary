@@ -2,17 +2,17 @@
 
 import Link from 'next/link';
 import { memo } from 'react';
-import type { CaseRecord } from '@/types/case';
+import type { CaseListItem } from '@/types/case';
 import { caseRef, causeTitle } from '@/lib/utils/case';
 import { formatDate, relativeDay, urgencyOf } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
-import { useDiaryPdf } from '@/hooks/useDiaryPdf';
+import { shareCaseText } from '@/hooks/useDiaryPdf';
 import { Icon } from '@/components/ui/Icon';
 import { DateChip } from './DateChip';
 import { StageBadge } from './StageBadge';
 
 interface CaseCardProps {
-  record: CaseRecord;
+  record: CaseListItem;
   /** The diary already groups by date, so the calendar tile is redundant there. */
   hideDateChip?: boolean;
   /** Denser variant for sidebars and secondary columns. */
@@ -31,7 +31,6 @@ interface CaseCardProps {
 export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }: CaseCardProps) {
   const urgency = urgencyOf(record.nextDate);
   const isDisposed = record.status === 'disposed';
-  const { shareCaseText } = useDiaryPdf();
 
   return (
     <article

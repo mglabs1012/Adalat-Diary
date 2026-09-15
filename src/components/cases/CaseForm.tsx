@@ -8,7 +8,7 @@ import { enqueue } from '@/lib/offline/outbox';
 import { COURT_GROUPS, PURPOSE_SUGGESTIONS, isKnownCourt } from '@/lib/constants/courts';
 import { DEFAULT_STAGE, STAGES } from '@/lib/constants/stages';
 import { toInputDate } from '@/lib/utils/date';
-import { revalidateDiary } from '@/hooks/useCases';
+import { revalidateDiary, updateCachedCase } from '@/hooks/useCases';
 import { useOnline } from '@/hooks/useOnline';
 import { toast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/Button';
@@ -144,7 +144,10 @@ export function CaseForm({ initial }: CaseFormProps) {
         ? await casesApi.update(initial!.id, payload)
         : await casesApi.create(payload);
 
-      await revalidateDiary();
+      // Seed the destination and any visible cards before navigation. A full
+      // refresh then happens in the background instead of blocking the UI.
+      await updateCachedCase(saved);
+      void revalidateDiary();
       toast(isEdit ? 'Case updated' : 'Case added to your diary', 'success');
       router.push(`/cases/${saved.id}`);
     } catch (err) {

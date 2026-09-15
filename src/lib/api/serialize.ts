@@ -1,4 +1,4 @@
-import type { CaseRecord } from '@/types/case';
+import type { CaseListItem, CaseRecord } from '@/types/case';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -34,5 +34,28 @@ export function serialize(doc: any): CaseRecord {
     })),
     createdAt: new Date(doc.createdAt).toISOString(),
     updatedAt: new Date(doc.updatedAt).toISOString(),
+  };
+}
+
+/**
+ * Wire shape for collection views. This deliberately omits the potentially
+ * large `history` and `notes` fields; callers fetch the full record only when
+ * a user opens a matter.
+ */
+export function serializeListItem(doc: any): CaseListItem {
+  return {
+    id: String(doc._id ?? doc.id),
+    crn: doc.crn,
+    caseNo: doc.caseNo ?? undefined,
+    court: doc.court,
+    courtRoom: doc.courtRoom ?? undefined,
+    party1: doc.party1,
+    party2: doc.party2,
+    stage: doc.stage,
+    preDate: doc.preDate ? new Date(doc.preDate).toISOString() : null,
+    nextDate: doc.nextDate ? new Date(doc.nextDate).toISOString() : null,
+    purpose: doc.purpose ?? undefined,
+    pinned: Boolean(doc.pinned),
+    status: doc.status ?? 'active',
   };
 }

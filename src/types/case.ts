@@ -69,8 +69,31 @@ export interface CaseRecord {
   _pending?: boolean;
 }
 
+/**
+ * The compact shape used by board, docket and diary cards. Keeping history,
+ * client details and notes on the detail route avoids transferring a whole
+ * file for every card in a long docket.
+ */
+export type CaseListItem = Pick<
+  CaseRecord,
+  | 'id'
+  | 'crn'
+  | 'caseNo'
+  | 'court'
+  | 'courtRoom'
+  | 'party1'
+  | 'party2'
+  | 'stage'
+  | 'preDate'
+  | 'nextDate'
+  | 'purpose'
+  | 'pinned'
+  | 'status'
+  | '_pending'
+>;
+
 export interface CaseListResponse {
-  items: CaseRecord[];
+  items: CaseListItem[];
   total: number;
   page: number;
   pageSize: number;

@@ -37,8 +37,10 @@ export async function POST(req: NextRequest) {
     const updated: number[] = [];
     const skipped: { line: number; reason: string }[] = [];
 
-    // Row by row rather than insertMany: a spreadsheet of 200 matters is a
-    // one-off, and per-row reporting is worth far more here than throughput.
+    const valid: { line: number; data: ReturnType<typeof caseCreateSchema.parse> }[] = [];
+
+    // Validate every row locally first, so one bad cell never prevents the
+    // rest of the spreadsheet from importing.
     for (const row of rows) {
       try {
         const data = caseCreateSchema.parse(row.data);
@@ -46,26 +48,7 @@ export async function POST(req: NextRequest) {
         // as a status, so infer it rather than leaving closed matters active.
         if (data.stage === 'disposed' && !data.status) data.status = 'disposed';
         // Matching is by CRN. A row without one is always a new matter.
-        const existing = data.crn ? await CaseModel.exists({ ownerId, crn: data.crn }) : null;
-
-        if (existing && !overwrite) {
-          skipped.push({ line: row.line, reason: `CRN ${data.crn} is already in your diary` });
-          continue;
-        }
-
-        if (existing) {
-          await CaseModel.updateOne({ _id: existing._id }, { $set: data }).exec();
-          updated.push(row.line);
-        } else {
-          await CaseModel.create({
-            ...data,
-            ownerId,
-            history: data.preDate
-              ? [{ date: data.preDate, stage: data.stage, note: 'Imported', recordedAt: new Date() }]
-              : [],
-          });
-          imported.push(row.line);
-        }
+        valid.push({ line: row.line, data });
       } catch (err) {
         const message =
           err instanceof z.ZodError
@@ -76,6 +59,51 @@ export async function POST(req: NextRequest) {
         skipped.push({ line: row.line, reason: message });
       }
     }
+
+    // One lookup identifies existing CRNs, then bulkWrite sends all inserts
+    // and updates together. A 500-row import now makes two database trips,
+    // rather than up to a thousand serial queries.
+    const crns = [...new Set(valid.map(({ data }) => data.crn).filter(Boolean))];
+    const existing = crns.length
+      ? await CaseModel.find({ ownerId, crn: { $in: crns } }).select('_id crn').lean().exec()
+      : [];
+    const byCrn = new Map(existing.map((record) => [record.crn, record._id]));
+    const seen = new Set<string>();
+    const operations: Parameters<typeof CaseModel.bulkWrite>[0] = [];
+
+    for (const { line, data } of valid) {
+      if (data.crn && seen.has(data.crn)) {
+        skipped.push({ line, reason: `CRN ${data.crn} appears more than once in this file` });
+        continue;
+      }
+      if (data.crn) seen.add(data.crn);
+
+      const existingId = data.crn ? byCrn.get(data.crn) : undefined;
+      if (existingId && !overwrite) {
+        skipped.push({ line, reason: `CRN ${data.crn} is already in your diary` });
+        continue;
+      }
+
+      if (existingId) {
+        operations.push({ updateOne: { filter: { _id: existingId }, update: { $set: data } } });
+        updated.push(line);
+      } else {
+        operations.push({
+          insertOne: {
+            document: {
+              ...data,
+              ownerId,
+              history: data.preDate
+                ? [{ date: data.preDate, stage: data.stage, note: 'Imported', recordedAt: new Date() }]
+                : [],
+            },
+          },
+        });
+        imported.push(line);
+      }
+    }
+
+    if (operations.length) await CaseModel.bulkWrite(operations, { ordered: false });
 
     log.info('csv import', {
       imported: imported.length,

@@ -1,4 +1,4 @@
-import type { CaseRecord } from '@/types/case';
+import type { CaseListItem, CaseRecord } from '@/types/case';
 import { getStage } from '@/lib/constants/stages';
 import { caseRef, causeTitle } from '@/lib/utils/case';
 import { formatDate, formatLongDate } from '@/lib/utils/date';
@@ -160,7 +160,7 @@ function columnStyles(showNext: boolean) {
   return styles;
 }
 
-function rows(cases: CaseRecord[], showNext: boolean) {
+function rows(cases: CaseListItem[], showNext: boolean) {
   return cases.map((c, i) => {
     const row: Record<string, string | number> = {
       index: i + 1,
@@ -183,7 +183,7 @@ function fileSafe(text: string) {
 /* ── Day cause list ───────────────────────────────────────────────────────── */
 
 export async function buildDayPdf(
-  cases: CaseRecord[],
+  cases: CaseListItem[],
   date: Date,
   meta: PdfMeta,
 ): Promise<{ blob: Blob; filename: string }> {
@@ -226,7 +226,7 @@ export interface DayGroup {
   /** yyyy-MM-dd */
   key: string;
   date: string;
-  cases: CaseRecord[];
+  cases: CaseListItem[];
 }
 
 const MONTH_FMT = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' });
