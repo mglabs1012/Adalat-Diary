@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCases } from '@/hooks/useCases';
 import { useStats } from '@/hooks/useStats';
 import { useDiaryPdf } from '@/hooks/useDiaryPdf';
-import { formatLongDate } from '@/lib/utils/date';
+import { addDays, formatLongDate, toInputDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { CaseCard } from '@/components/cases/CaseCard';
 import { useSession } from '@/components/layout/SessionProvider';
@@ -40,6 +40,10 @@ export function BoardScreen() {
   const { stats, isLoading: statsLoading } = useStats();
   const { cases: today, isLoading: todayLoading } = useCases({ filter: 'today', pageSize: 20 });
   const { cases: upcoming } = useCases({ filter: 'upcoming', pageSize: 5 });
+
+  const todayKey = toInputDate(new Date());
+  const tomorrowKey = toInputDate(addDays(new Date(), 1));
+  const weekEndKey = toInputDate(addDays(new Date(), 7));
 
   const nextUp = upcoming.filter((c) => !today.some((t) => t.id === c.id)).slice(0, 4);
 
@@ -109,8 +113,20 @@ export function BoardScreen() {
           ) : (
             <>
               <StatTile label="Listed today" value={stats.today} icon="courthouse" tone="amber" href="/cases?f=today" />
-              <StatTile label="Tomorrow" value={stats.tomorrow} icon="clock" tone="plain" href="/diary" />
-              <StatTile label="This week" value={stats.thisWeek} icon="diary" tone="plain" href="/diary" />
+              <StatTile
+                label="Tomorrow"
+                value={stats.tomorrow}
+                icon="clock"
+                tone="plain"
+                href={`/diary?date=${tomorrowKey}`}
+              />
+              <StatTile
+                label="This week"
+                value={stats.thisWeek}
+                icon="diary"
+                tone="plain"
+                href={`/diary?from=${todayKey}&to=${weekEndKey}`}
+              />
               <StatTile
                 label="Date passed"
                 value={stats.overdue}

@@ -1,4 +1,4 @@
-import { ButtonLink } from './Button';
+import { Button, ButtonLink } from './Button';
 import { Icon, type IconName } from './Icon';
 
 interface EmptyStateProps {
@@ -7,9 +7,10 @@ interface EmptyStateProps {
   body?: string;
   actionLabel?: string;
   actionHref?: string;
+  onAction?: () => void;
 }
 
-export function EmptyState({ icon = 'archive', title, body, actionLabel, actionHref }: EmptyStateProps) {
+export function EmptyState({ icon = 'archive', title, body, actionLabel, actionHref, onAction }: EmptyStateProps) {
   return (
     <div className="card flex flex-col items-center gap-space-sm px-space-base py-space-3xl text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
@@ -21,6 +22,10 @@ export function EmptyState({ icon = 'archive', title, body, actionLabel, actionH
         <ButtonLink href={actionHref} icon="add" pill className="mt-space-xs">
           {actionLabel}
         </ButtonLink>
+      ) : actionLabel && onAction ? (
+        <Button onClick={onAction} variant="secondary" pill className="mt-space-xs">
+          {actionLabel}
+        </Button>
       ) : null}
     </div>
   );

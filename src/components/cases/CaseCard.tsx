@@ -17,6 +17,8 @@ interface CaseCardProps {
   hideDateChip?: boolean;
   /** Denser variant for sidebars and secondary columns. */
   compact?: boolean;
+  /** Keeps all case information visible while fitting more records per screen. */
+  dense?: boolean;
 }
 
 /**
@@ -28,15 +30,20 @@ interface CaseCardProps {
  * share button inside it, which nesting a button in an anchor would not.
  * Memoised — a long docket re-renders on every keystroke in the search box.
  */
-export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }: CaseCardProps) {
+export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact, dense }: CaseCardProps) {
   const urgency = urgencyOf(record.nextDate);
   const isDisposed = record.status === 'disposed';
+  const compactLayout = compact || dense;
 
   return (
     <article
       className={cn(
-        'card group relative flex gap-space-md overflow-hidden transition-shadow focus-within:shadow-e2 hover:shadow-e2',
-        compact ? 'p-space-md' : 'p-space-base',
+        'card group relative flex h-full overflow-hidden transition-shadow focus-within:shadow-e2 hover:shadow-e2',
+        dense
+          ? 'h-[9.5rem] gap-space-sm p-space-sm'
+          : compact
+            ? 'h-[10rem] gap-space-md p-space-md'
+            : 'h-[11rem] gap-space-md p-space-base',
       )}
     >
       {/* A coloured edge marks what needs attention, without adding a badge. */}
@@ -49,7 +56,7 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
 
       {hideDateChip ? null : <DateChip date={record.nextDate} className="mt-0.5 shrink-0" />}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-space-xs">
+      <div className={cn('flex min-w-0 flex-1 flex-col justify-between gap-space-xs', dense && 'gap-1')}>
         <div className="flex items-start justify-between gap-space-sm">
           <span
             className={cn(
@@ -73,7 +80,7 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
         <h3
           className={cn(
             'font-display text-primary transition-colors group-hover:text-primary-container',
-            compact ? 'line-clamp-2 text-label-lg' : 'line-clamp-2 text-headline-sm',
+            compactLayout ? 'line-clamp-2 text-label-lg' : 'line-clamp-2 text-headline-sm',
           )}
         >
           {/* The overlay sits on the title so the accessible name is right. */}
@@ -84,13 +91,13 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
 
         <div className="flex items-center gap-space-xs text-on-surface-variant">
           <Icon name="courthouse" size={14} className="shrink-0" />
-          <span className="truncate text-body-sm">
+          <span className={cn('truncate', dense ? 'text-label-md' : 'text-body-sm')}>
             {record.court}
             {record.courtRoom ? ` · ${record.courtRoom}` : ''}
           </span>
         </div>
 
-        <div className="mt-space-xxs flex items-center justify-between gap-space-sm border-t border-on-surface/5 pt-space-xs">
+        <div className={cn('mt-space-xxs flex items-center justify-between gap-space-sm border-t border-on-surface/5 pt-space-xs', dense && 'pt-1')}>
           <span
             className={cn(
               'inline-flex items-center gap-1 text-label-md',
@@ -106,7 +113,7 @@ export const CaseCard = memo(function CaseCard({ record, hideDateChip, compact }
           </span>
 
           <div className="flex items-center gap-space-sm">
-            {compact ? null : (
+            {compactLayout ? null : (
               <span className="tnum truncate text-label-md text-on-surface-variant">
                 Prev: {formatDate(record.preDate)}
               </span>

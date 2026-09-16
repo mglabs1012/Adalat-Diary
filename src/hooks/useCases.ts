@@ -7,7 +7,10 @@ import { readCases, saveCases } from '@/lib/offline/cache';
 import { caseKey, casesKey, type CasesKeyOptions } from '@/lib/api/keys';
 import type { CaseListItem, CaseListResponse, CaseRecord } from '@/types/case';
 
-export type UseCasesOptions = CasesKeyOptions;
+export interface UseCasesOptions extends CasesKeyOptions {
+  /** Set false for views where an old query must never remain visible. */
+  keepPreviousData?: boolean;
+}
 
 
 export { casesKey };
@@ -34,15 +37,16 @@ function toListItem(record: CaseRecord): CaseListItem {
   };
 }
 
-export function useCases(opts: UseCasesOptions = {}) {
-  const key = casesKey(opts);
+export function useCases(opts: UseCasesOptions = {}, enabled = true) {
+  const { keepPreviousData = true, ...keyOptions } = opts;
+  const key = enabled ? casesKey(keyOptions) : null;
 
-  const { data, error, isLoading, mutate } = useSWR<CaseListResponse>(key, fetcher, {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<CaseListResponse>(key, fetcher, {
     // Server Components already seeded the first paint. Do not immediately
     // request the exact same list again after hydration.
     revalidateIfStale: false,
     revalidateOnFocus: false,
-    keepPreviousData: true,
+    keepPreviousData,
     dedupingInterval: 12_000,
     errorRetryCount: 2,
     // An offline cold start reads IndexedDB below instead of spending time on
@@ -53,14 +57,14 @@ export function useCases(opts: UseCasesOptions = {}) {
   // Mirror every successful page into IndexedDB so a cold, offline start
   // still shows the docket instead of an empty screen.
   useEffect(() => {
-    if (data?.items) void saveCases(key, data.items);
+    if (key && data?.items) void saveCases(key, data.items);
   }, [data, key]);
 
   // Offline fallback: hydrate from IndexedDB immediately on a cold start,
   // rather than waiting for the network request to fail first.
   useEffect(() => {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-    if (data || (!error && !offline)) return;
+    if (!key || data || (!error && !offline)) return;
     let cancelled = false;
     void readCases(key).then((items) => {
       if (!cancelled && items) {
@@ -82,6 +86,7 @@ export function useCases(opts: UseCasesOptions = {}) {
     total: data?.total ?? 0,
     hasMore: data?.hasMore ?? false,
     isLoading: isLoading && !data,
+    isValidating,
     isOfflineData: Boolean(error && data),
     error,
     mutate,
