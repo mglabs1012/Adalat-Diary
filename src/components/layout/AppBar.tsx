@@ -41,7 +41,7 @@ export function AppBar({ title, subtitle, back, actions, width = 'page' }: AppBa
               <Icon name="back" size={22} />
             </button>
           ) : (
-            <span className="mr-space-xxs flex h-9 w-9 items-center justify-center rounded bg-primary text-on-primary lg:hidden">
+            <span className="mr-space-xxs flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10 text-secondary ring-1 ring-inset ring-secondary/25 lg:hidden">
               <Icon name="scale" size={20} />
             </span>
           )}

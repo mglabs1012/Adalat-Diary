@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SideNav />
-      <div className="flex min-h-[100dvh] flex-1 flex-col lg:pl-side-nav">
+      <div className="app-viewport flex min-h-screen flex-1 flex-col lg:pl-side-nav">
         <RouteTransition>{children}</RouteTransition>
       </div>
       <BottomNav />

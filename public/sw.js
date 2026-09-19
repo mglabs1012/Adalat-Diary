@@ -12,7 +12,7 @@
  * in the app, which owns retry and ordering.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC_CACHE = `adalat-static-${VERSION}`;
 const PAGE_CACHE = `adalat-pages-${VERSION}`;
 const DATA_CACHE = `adalat-data-${VERSION}`;
@@ -24,27 +24,23 @@ const DATA_MAX_ENTRIES = 60;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    (async () => {
-      const cache = await caches.open(PAGE_CACHE);
+    caches.open(PAGE_CACHE).then((cache) =>
       // addAll is all-or-nothing; a single 404 must not break installation.
-      await Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => {})));
-      await self.skipWaiting();
-    })(),
+      Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => {}))),
+    ).then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    (async () => {
-      const keys = await caches.keys();
-      await Promise.all(
-        keys.filter((k) => !k.endsWith(VERSION)).map((k) => caches.delete(k)),
-      );
-      if (self.registration.navigationPreload) {
-        await self.registration.navigationPreload.enable();
-      }
-      await self.clients.claim();
-    })(),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => !k.endsWith(VERSION)).map((k) => caches.delete(k))))
+      .then(() => {
+        if (self.registration.navigationPreload) return self.registration.navigationPreload.enable();
+        return undefined;
+      })
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -65,73 +61,78 @@ function isCacheableApi(url) {
 }
 
 /** Keeps the data cache from growing without bound on a long-lived install. */
-async function trim(cacheName, maxEntries) {
-  const cache = await caches.open(cacheName);
-  const keys = await cache.keys();
-  if (keys.length <= maxEntries) return;
-  await Promise.all(keys.slice(0, keys.length - maxEntries).map((k) => cache.delete(k)));
+function trim(cacheName, maxEntries) {
+  return caches.open(cacheName).then((cache) =>
+    cache.keys().then((keys) => {
+      if (keys.length <= maxEntries) return undefined;
+      return Promise.all(keys.slice(0, keys.length - maxEntries).map((k) => cache.delete(k)));
+    }),
+  );
 }
 
-async function cacheFirst(request) {
-  const cache = await caches.open(STATIC_CACHE);
-  const hit = await cache.match(request);
-  if (hit) return hit;
-
-  const response = await fetch(request);
-  if (response.ok) cache.put(request, response.clone());
-  return response;
+function cacheFirst(request) {
+  return caches.open(STATIC_CACHE).then((cache) =>
+    cache.match(request).then((hit) => {
+      if (hit) return hit;
+      return fetch(request).then((response) => {
+        if (response.ok) cache.put(request, response.clone());
+        return response;
+      });
+    }),
+  );
 }
 
-async function networkFirstPage(event) {
-  const cache = await caches.open(PAGE_CACHE);
-  try {
-    const preloaded = await event.preloadResponse;
-    const response = preloaded || (await fetch(event.request));
-    if (response && response.ok) cache.put(event.request, response.clone());
-    return response;
-  } catch {
-    const cached = await cache.match(event.request);
-    if (cached) return cached;
-    const offline = await cache.match(OFFLINE_URL);
-    return (
-      offline ||
-      new Response('<h1>You are offline</h1>', {
-        status: 503,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+function networkFirstPage(event) {
+  return caches.open(PAGE_CACHE).then((cache) =>
+    Promise.resolve(event.preloadResponse)
+      .then((preloaded) => preloaded || fetch(event.request))
+      .then((response) => {
+        if (response && response.ok) cache.put(event.request, response.clone());
+        return response;
       })
-    );
-  }
+      .catch(() =>
+        cache.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return cache.match(OFFLINE_URL).then(
+            (offline) =>
+              offline ||
+              new Response('<h1>You are offline</h1>', {
+                status: 503,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
+              }),
+          );
+        }),
+      ),
+  );
 }
 
-async function staleWhileRevalidate(event) {
-  const { request } = event;
-  const cache = await caches.open(DATA_CACHE);
-  const cached = await cache.match(request);
+function staleWhileRevalidate(event) {
+  const request = event.request;
+  return caches.open(DATA_CACHE).then((cache) =>
+    cache.match(request).then((cached) => {
+      const network = fetch(request)
+        .then((response) => {
+          if (!response.ok) return response;
+          return cache.put(request, response.clone()).then(() => trim(DATA_CACHE, DATA_MAX_ENTRIES)).then(() => response);
+        })
+        .catch(() => null);
 
-  const network = fetch(request)
-    .then(async (response) => {
-      if (response.ok) {
-        await cache.put(request, response.clone());
-        await trim(DATA_CACHE, DATA_MAX_ENTRIES);
+      // Serve the cached copy immediately, but keep the worker alive long enough
+      // for the revalidation to land in the cache.
+      if (cached) {
+        event.waitUntil(network);
+        return cached;
       }
-      return response;
-    })
-    .catch(() => null);
 
-  // Serve the cached copy immediately, but keep the worker alive long enough
-  // for the revalidation to land in the cache.
-  if (cached) {
-    event.waitUntil(network);
-    return cached;
-  }
-
-  const fresh = await network;
-  return (
-    fresh ||
-    new Response(JSON.stringify({ error: 'You are offline and this list has not been saved yet.' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    })
+      return network.then(
+        (fresh) =>
+          fresh ||
+          new Response(JSON.stringify({ error: 'You are offline and this list has not been saved yet.' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      );
+    }),
   );
 }
 

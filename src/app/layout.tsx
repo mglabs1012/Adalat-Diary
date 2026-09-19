@@ -31,6 +31,14 @@ const poppins = Poppins({
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Adalat Diary';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+// Runs before Next's client bundles. Android 7's Chromium lacks a couple of
+// baseline methods that dependencies may use; keeping this ES5 avoids a parse
+// failure before the application has a chance to load.
+const LEGACY_BROWSER_SCRIPT = `(function(){
+  if(!Object.fromEntries){Object.fromEntries=function(entries){var output={};for(var i=0;i<entries.length;i++){output[entries[i][0]]=entries[i][1];}return output;};}
+  if(!Promise.prototype.finally){Promise.prototype.finally=function(callback){var constructor=this.constructor;return this.then(function(value){return constructor.resolve(callback()).then(function(){return value;});},function(reason){return constructor.resolve(callback()).then(function(){throw reason;});});};}
+}())`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: { default: `${APP_NAME} — Court diary for advocates`, template: `%s · ${APP_NAME}` },
@@ -45,7 +53,7 @@ export const metadata: Metadata = {
       { url: '/icons/icon.svg', type: 'image/svg+xml' },
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/icons/apple-touch-icon.png',
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: { title: APP_NAME, description: 'Court diary for advocates.', type: 'website' },
   robots: { index: false, follow: false },
@@ -57,10 +65,9 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8f9ff' },
-    { media: '(prefers-color-scheme: dark)', color: '#101623' },
-  ],
+  // A non-media tag lets the theme picker keep Android's installed-app
+  // status bar in sync. The pre-paint theme script updates it for dark mode.
+  themeColor: '#f8f9ff',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -68,8 +75,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
       <head>
         <ThemeScript />
+        <script dangerouslySetInnerHTML={{ __html: LEGACY_BROWSER_SCRIPT }} />
+        {/* Older Android Chrome recognises this even when it ignores parts of
+            the Web App Manifest. iOS receives the appleWebApp metadata above. */}
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="flex min-h-[100dvh] flex-col bg-surface font-sans text-body-md text-on-surface antialiased">
+      <body className="app-viewport flex min-h-screen flex-col bg-surface font-sans text-body-md text-on-surface antialiased">
         <AppProviders>{children}</AppProviders>
         <Toaster />
       </body>

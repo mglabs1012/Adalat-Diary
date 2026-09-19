@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
+import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
 
 interface Segment<T extends string> {
   id: T;
@@ -17,11 +18,11 @@ interface SegmentedTabsProps<T extends string> {
 /** Rounded track (12px) housing inner pill selectors - Material 3 Expressive. */
 export function SegmentedTabs<T extends string>({ segments, value, onChange }: SegmentedTabsProps<T>) {
   return (
-    <div
+    <ConnectedSegmentTrack
       role="tablist"
-      className="no-scrollbar flex items-center gap-space-xs overflow-x-auto rounded-md bg-surface-container-high p-1"
+      className="no-scrollbar overflow-x-auto"
     >
-      {segments.map((s) => {
+      {segments.map((s, index) => {
         const active = s.id === value;
         return (
           <button
@@ -30,10 +31,11 @@ export function SegmentedTabs<T extends string>({ segments, value, onChange }: S
             aria-selected={active}
             onClick={() => onChange(s.id)}
             className={cn(
-              'min-w-max flex-1 whitespace-nowrap rounded px-space-md py-2 text-label-md transition-all',
+              'min-w-max flex-1 whitespace-nowrap px-space-md py-2 text-label-md transition-all',
+              connectedSegmentShape(active, index, segments.length),
               active
-                ? 'bg-surface-container-lowest text-primary shadow-e1'
-                : 'text-on-surface-variant hover:text-primary',
+                ? 'bg-primary text-on-primary shadow-e1'
+                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
             )}
           >
             {s.label}
@@ -43,6 +45,6 @@ export function SegmentedTabs<T extends string>({ segments, value, onChange }: S
           </button>
         );
       })}
-    </div>
+    </ConnectedSegmentTrack>
   );
 }

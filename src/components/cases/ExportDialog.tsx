@@ -8,6 +8,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
 import { DatePicker, Field, Select } from '@/components/ui/Form';
 import { Icon } from '@/components/ui/Icon';
+import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
 
 type Span = 'day' | 'month';
 
@@ -50,34 +51,34 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       onClose={onClose}
     >
       <div className="flex flex-col gap-space-lg">
-        <div
+        <ConnectedSegmentTrack
           role="radiogroup"
           aria-label="What to include"
-          className="flex items-center gap-space-xs rounded-md bg-surface-container-high p-1"
         >
           {(
             [
               ['day', 'A single day', 'diary'],
               ['month', 'A whole month', 'archive'],
             ] as const
-          ).map(([id, label, icon]) => (
+          ).map(([id, label, icon], index, choices) => (
             <button
               key={id}
               role="radio"
               aria-checked={span === id}
               onClick={() => setSpan(id)}
               className={cn(
-                'flex min-h-11 flex-1 items-center justify-center gap-space-xs rounded text-label-md transition-all',
+                'flex min-h-11 flex-1 items-center justify-center gap-space-xs px-space-sm text-label-md transition-all',
+                connectedSegmentShape(span === id, index, choices.length),
                 span === id
-                  ? 'bg-surface-container-lowest text-primary shadow-e1'
-                  : 'text-on-surface-variant hover:text-primary',
+                  ? 'bg-primary text-on-primary shadow-e1'
+                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
               )}
             >
               <Icon name={icon} size={15} />
               {label}
             </button>
           ))}
-        </div>
+        </ConnectedSegmentTrack>
 
         {span === 'day' ? (
           <Field label="Date" hint="Every matter carrying this next date">

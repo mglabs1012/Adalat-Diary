@@ -8,6 +8,7 @@ import { enqueue } from '@/lib/offline/outbox';
 import { COURT_GROUPS, PURPOSE_SUGGESTIONS, isKnownCourt } from '@/lib/constants/courts';
 import { DEFAULT_STAGE, STAGES } from '@/lib/constants/stages';
 import { toInputDate } from '@/lib/utils/date';
+import { cn } from '@/lib/utils/cn';
 import { revalidateDiary, updateCachedCase } from '@/hooks/useCases';
 import { useOnline } from '@/hooks/useOnline';
 import { toast } from '@/hooks/useToast';
@@ -41,6 +42,11 @@ const SIDES = [
 const NOTES_MAX = 5000;
 
 const STAGE_OPTIONS = STAGES.map((s) => ({ value: s.id, label: s.label }));
+
+// These are real values from the chamber's court register, not display-only
+// names from the design reference. They make the most common codes one tap
+// away while the searchable picker remains the authoritative full list.
+const QUICK_COURTS = ['DJ', 'ADJ1', 'CJM', 'ACJM1'] as const;
 
 /**
  * One form for create and edit. The seven diary fields come first and are
@@ -110,10 +116,13 @@ export function CaseForm({ initial }: CaseFormProps) {
 
     if (Object.keys(next).length) {
       // Put the user on the first problem instead of making them hunt.
-      document
-        .querySelector<HTMLElement>('[aria-invalid="true"]')
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+      window.requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          firstInvalid.focus({ preventScroll: true });
+        }
+      });
       return false;
     }
     return true;
@@ -152,7 +161,13 @@ export function CaseForm({ initial }: CaseFormProps) {
       router.push(`/cases/${saved.id}`);
     } catch (err) {
       if (err instanceof ApiError && err.issues?.length) {
-        setErrors(Object.fromEntries(err.issues.map((i) => [i.path, i.message])));
+        // Object.fromEntries is absent in Android 7-era Chrome/WebView.
+        setErrors(
+          err.issues.reduce<Errors>((next, issue) => {
+            next[issue.path] = issue.message;
+            return next;
+          }, {}),
+        );
         toast(err.message, 'error');
       } else {
         toast(err instanceof Error ? err.message : 'Could not save the case', 'error');
@@ -162,18 +177,18 @@ export function CaseForm({ initial }: CaseFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-space-base pb-space-2xl" noValidate>
+    <form onSubmit={onSubmit} className="flex flex-col gap-space-base pb-space-xl lg:pb-space-2xl" noValidate>
       <FormSection
         title="Case record"
         icon="note"
-        description="The seven fields that drive your diary."
+        description="The seven fields that drive your diary listing."
       >
         <FormGrid>
           <FormRow>
             <Field
               label="CRN / case reference"
               error={errors.crn}
-              hint="Optional — the number the registry knows this file by"
+              hint="Optional — the unique identifier the registry records this file by"
             >
               {(ids) => (
                 <TextInput
@@ -192,25 +207,60 @@ export function CaseForm({ initial }: CaseFormProps) {
           </FormRow>
 
           <FormRow>
-            <Field label="Court" required error={errors.court} hint="The establishment this matter is listed in">
+            <Field
+              label="Court"
+              required
+              error={errors.court}
+              hint="The judicial establishment this matter is listed in"
+              meta={<span className="rounded-full bg-secondary/10 px-2 py-0.5 text-label-sm uppercase tracking-wide text-secondary">Required</span>}
+            >
               {(ids) => (
-                <Select
-                  ids={ids}
-                  value={form.court}
-                  onChange={(v) => set('court', v)}
-                  placeholder="Select a court…"
-                  groups={courtGroups}
-                  searchable
-                />
+                <>
+                  <Select
+                    ids={ids}
+                    value={form.court}
+                    onChange={(v) => set('court', v)}
+                    placeholder="Select a court…"
+                    groups={courtGroups}
+                    searchable
+                  />
+                  <div className="no-scrollbar -mb-0.5 flex items-center gap-space-xs overflow-x-auto pt-space-xs" aria-label="Quick court choices">
+                    <span className="shrink-0 text-label-sm text-on-surface-variant/70">Quick:</span>
+                    {QUICK_COURTS.map((court) => {
+                      const active = form.court === court;
+                      return (
+                        <button
+                          key={court}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => set('court', court)}
+                          className={cn(
+                            'press shrink-0 rounded px-2.5 py-1 text-label-md transition-colors',
+                            active
+                              ? 'bg-primary text-on-primary'
+                              : 'bg-surface-container-lowest text-on-surface-variant ring-1 ring-inset ring-on-surface/10 hover:bg-surface-container hover:text-primary',
+                          )}
+                        >
+                          {court}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </Field>
           </FormRow>
 
           <FormRow>
             {/* The cause title, laid out the way it reads on a cause list. */}
-            <div className="rounded-md bg-surface-container-low/60 p-space-md">
+            <div className="rounded-xl border border-on-surface/5 bg-surface-container-low/70 p-space-md">
               <div className="grid grid-cols-1 items-end gap-space-sm md:grid-cols-[1fr_auto_1fr]">
-                <Field label="Party 1 — petitioner / plaintiff" required error={errors.party1}>
+                <Field
+                  label="Party 1 — petitioner / plaintiff"
+                  required
+                  error={errors.party1}
+                  meta={<span className="text-label-md font-normal text-on-surface-variant/70">Aggrieved</span>}
+                >
                   {(ids) => (
                     <TextInput
                       ids={ids}
@@ -222,6 +272,13 @@ export function CaseForm({ initial }: CaseFormProps) {
                   )}
                 </Field>
 
+                <span aria-hidden className="relative flex h-4 items-center justify-center md:hidden">
+                  <span className="absolute inset-x-0 h-px bg-on-surface/8" />
+                  <span className="relative rounded-full border border-on-surface/10 bg-surface-container-lowest px-2 text-label-sm uppercase text-on-surface-variant">
+                    versus
+                  </span>
+                </span>
+
                 <span
                   aria-hidden
                   className="hidden h-12 items-center px-space-xs font-display text-label-lg italic text-on-surface-variant md:flex"
@@ -229,7 +286,12 @@ export function CaseForm({ initial }: CaseFormProps) {
                   v.
                 </span>
 
-                <Field label="Party 2 — respondent / defendant" required error={errors.party2}>
+                <Field
+                  label="Party 2 — respondent / defendant"
+                  required
+                  error={errors.party2}
+                  meta={<span className="text-label-md font-normal text-on-surface-variant/70">Opposing</span>}
+                >
                   {(ids) => (
                     <TextInput
                       ids={ids}
@@ -244,7 +306,7 @@ export function CaseForm({ initial }: CaseFormProps) {
             </div>
           </FormRow>
 
-          <Field label="Stage" hint="Where the matter has reached">
+          <Field label="Stage" hint="Where the judicial proceeding currently stands">
             {(ids) => (
               <Select
                 ids={ids}
@@ -266,40 +328,56 @@ export function CaseForm({ initial }: CaseFormProps) {
             )}
           </Field>
 
-          <Field label="Previous date" error={errors.preDate} hint="The last hearing">
-            {(ids) => (
-              <DatePicker
-                ids={ids}
-                value={form.preDate}
-                max={form.nextDate || undefined}
-                onChange={(v) => set('preDate', v)}
-              />
-            )}
-          </Field>
+          <FormRow>
+            <div className="grid grid-cols-2 gap-space-sm">
+              <Field label="Previous date" error={errors.preDate} hint="The last hearing">
+                {(ids) => (
+                  <DatePicker
+                    ids={ids}
+                    value={form.preDate}
+                    max={form.nextDate || undefined}
+                    onChange={(v) => set('preDate', v)}
+                  />
+                )}
+              </Field>
 
-          <Field
-            label="Next date"
-            error={errors.nextDate}
-            hint="What the board is counting down to"
-          >
-            {(ids) => (
-              <DatePicker
-                ids={ids}
-                value={form.nextDate}
-                min={form.preDate || undefined}
-                onChange={(v) => set('nextDate', v)}
-              />
-            )}
-          </Field>
+              <Field
+                label="Next date"
+                error={errors.nextDate}
+                hint="Countdown target"
+                meta={<span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-success" title="Board alert active" />}
+              >
+                {(ids) => (
+                  <DatePicker
+                    ids={ids}
+                    value={form.nextDate}
+                    min={form.preDate || undefined}
+                    onChange={(v) => set('nextDate', v)}
+                  />
+                )}
+              </Field>
+            </div>
+          </FormRow>
         </FormGrid>
       </FormSection>
 
       <FormSection
         title="Case details"
         icon="folder"
+        iconTone="tertiary"
         description="Case number, judge, client and notes"
+        aside={<span className="rounded bg-tertiary-container px-2 py-0.5 text-label-sm text-on-tertiary-container">6 fields</span>}
         collapsible
         defaultOpen={false}
+        openWhen={Boolean(
+          errors.caseNo ||
+            errors.courtRoom ||
+            errors.judge ||
+            errors.purpose ||
+            errors.clientName ||
+            errors.clientPhone ||
+            errors.notes,
+        )}
       >
         <FormGrid>
           <Field label="Case number" error={errors.caseNo}>
@@ -416,7 +494,7 @@ export function CaseForm({ initial }: CaseFormProps) {
       ) : null}
 
       <FormActions>
-        <Button type="button" variant="secondary" size="lg" onClick={() => router.back()}>
+        <Button type="button" variant="secondary" size="lg" className="min-w-[6.5rem]" onClick={() => router.back()}>
           Cancel
         </Button>
         <Button

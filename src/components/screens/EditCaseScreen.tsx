@@ -3,6 +3,7 @@
 import { useCase } from '@/hooks/useCase';
 import { AppBar } from '@/components/layout/AppBar';
 import { CaseForm } from '@/components/cases/CaseForm';
+import { CaseFormHelp } from '@/components/cases/CaseFormHelp';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 
@@ -11,8 +12,8 @@ export function EditCaseScreen({ id }: { id: string }) {
 
   return (
     <>
-      <AppBar title="Edit case" subtitle={record?.crn ?? 'Loading'} back width="form" />
-      <main className="page-form flex flex-1 flex-col pb-nav pt-appbar">
+      <AppBar title="Edit case" subtitle={record?.crn ?? 'Loading'} back width="form" actions={<CaseFormHelp />} />
+      <main className="page-form flex flex-1 flex-col pb-form-actions pt-appbar">
         {isLoading ? (
           <ListSkeleton rows={3} />
         ) : error || !record ? (

@@ -17,6 +17,7 @@ import { ExportDialog } from '@/components/cases/ExportDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
+import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
 import { WavyLoader } from '@/components/ui/WavyLoader';
 
 interface DayGroup {
@@ -167,36 +168,40 @@ export function DiaryScreen() {
             </label>
 
             <div className="flex flex-col gap-space-sm sm:flex-row sm:items-end sm:justify-between xl:justify-end">
-              <div className="flex w-full items-center gap-1 rounded bg-surface-container p-1 sm:w-auto" aria-label="Quick dates">
-                <FilterButton active={date === today} onClick={() => replaceFilter({ date: today })}>
+              <ConnectedSegmentTrack className="w-full sm:w-auto" aria-label="Quick dates">
+                <FilterButton index={0} count={3} active={date === today} onClick={() => replaceFilter({ date: today })}>
                   Today
                 </FilterButton>
-                <FilterButton active={date === tomorrow} onClick={() => replaceFilter({ date: tomorrow })}>
+                <FilterButton index={1} count={3} active={date === tomorrow} onClick={() => replaceFilter({ date: tomorrow })}>
                   Tomorrow
                 </FilterButton>
                 <FilterButton
+                  index={2}
+                  count={3}
                   active={from === today && to === weekEnd}
                   onClick={() => replaceFilter({ from: today, to: weekEnd })}
                 >
                   Week
                 </FilterButton>
-              </div>
+              </ConnectedSegmentTrack>
 
-              <div className="flex w-full items-center gap-1 rounded bg-surface-container p-1 sm:w-auto">
+              <ConnectedSegmentTrack className="w-full sm:w-auto">
                 <button
                   type="button"
                   aria-label={sort === 'oldest' ? 'Sorting oldest first' : 'Sorting newest first'}
                   title={sort === 'oldest' ? 'Oldest first' : 'Newest first'}
                   onClick={() => setSort((current) => (current === 'oldest' ? 'newest' : 'oldest'))}
-                  className="press flex h-8 flex-1 items-center justify-center gap-1.5 rounded px-2 text-label-md text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary sm:flex-none"
+                  className={cn(
+                    'press flex h-8 flex-1 items-center justify-center gap-1.5 bg-surface-container px-2 text-label-md text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary sm:flex-none',
+                    connectedSegmentShape(false, 0, 3),
+                  )}
                 >
                   <Icon name="sort" size={15} />
                   <span>{sort === 'oldest' ? 'Oldest' : 'Newest'}</span>
                 </button>
-                <span className="h-5 w-px bg-on-surface/10" />
-                <ViewButton view="cards" active={view === 'cards'} onClick={() => setView('cards')} />
-                <ViewButton view="list" active={view === 'list'} onClick={() => setView('list')} />
-              </div>
+                <ViewButton index={1} count={3} view="cards" active={view === 'cards'} onClick={() => setView('cards')} />
+                <ViewButton index={2} count={3} view="list" active={view === 'list'} onClick={() => setView('list')} />
+              </ConnectedSegmentTrack>
             </div>
           </div>
 
@@ -249,15 +254,30 @@ export function DiaryScreen() {
   );
 }
 
-function FilterButton({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
+function FilterButton({
+  children,
+  active,
+  onClick,
+  index,
+  count,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  index: number;
+  count: number;
+}) {
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'press h-8 rounded px-2.5 text-label-md transition-colors',
-        active ? 'bg-surface-container-lowest text-primary shadow-e1' : 'text-on-surface-variant hover:text-primary',
+        'press h-8 flex-1 bg-surface-container px-2.5 text-label-md transition-colors sm:flex-none',
+        connectedSegmentShape(active, index, count),
+        active
+          ? 'bg-primary text-on-primary shadow-e1'
+          : 'text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
       )}
     >
       {children}
@@ -265,7 +285,19 @@ function FilterButton({ children, active, onClick }: { children: React.ReactNode
   );
 }
 
-function ViewButton({ view, active, onClick }: { view: ViewMode; active: boolean; onClick: () => void }) {
+function ViewButton({
+  view,
+  active,
+  onClick,
+  index,
+  count,
+}: {
+  view: ViewMode;
+  active: boolean;
+  onClick: () => void;
+  index: number;
+  count: number;
+}) {
   return (
     <button
       type="button"
@@ -273,8 +305,11 @@ function ViewButton({ view, active, onClick }: { view: ViewMode; active: boolean
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'press flex h-8 w-8 items-center justify-center rounded transition-colors',
-        active ? 'bg-surface-container-lowest text-primary shadow-e1' : 'text-on-surface-variant hover:text-primary',
+        'press flex h-8 w-8 items-center justify-center bg-surface-container transition-colors',
+        connectedSegmentShape(active, index, count),
+        active
+          ? 'bg-primary text-on-primary shadow-e1'
+          : 'text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
       )}
     >
       <Icon name={view === 'cards' ? 'grid' : 'list'} size={15} />

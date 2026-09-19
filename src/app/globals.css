@@ -7,56 +7,56 @@
    token swap, not a second set of utility classes.                        */
 @layer base {
   :root {
-    --background: 248 249 255;
-    --on-background: 15 23 42;
-    --surface: 248 249 255;
-    --surface-dim: 216 219 232;
-    --surface-bright: 255 255 255;
-    --surface-container-lowest: 255 255 255;
-    --surface-container-low: 242 244 251;
-    --surface-container: 236 239 248;
-    --surface-container-high: 229 233 244;
-    --surface-container-highest: 222 227 240;
-    --surface-variant: 222 227 240;
-    --on-surface: 15 23 42;
-    --on-surface-variant: 74 81 96;
-    --inverse-surface: 40 49 60;
-    --inverse-on-surface: 238 241 249;
-    --outline: 117 122 133;
-    --outline-variant: 199 204 216;
+    --background: 248, 249, 255;
+    --on-background: 15, 23, 42;
+    --surface: 248, 249, 255;
+    --surface-dim: 216, 219, 232;
+    --surface-bright: 255, 255, 255;
+    --surface-container-lowest: 255, 255, 255;
+    --surface-container-low: 242, 244, 251;
+    --surface-container: 236, 239, 248;
+    --surface-container-high: 229, 233, 244;
+    --surface-container-highest: 222, 227, 240;
+    --surface-variant: 222, 227, 240;
+    --on-surface: 15, 23, 42;
+    --on-surface-variant: 74, 81, 96;
+    --inverse-surface: 40, 49, 60;
+    --inverse-on-surface: 238, 241, 249;
+    --outline: 117, 122, 133;
+    --outline-variant: 199, 204, 216;
 
-    --primary: 26 43 73;
-    --on-primary: 255 255 255;
-    --primary-container: 11 31 51;
-    --on-primary-container: 182 199 236;
-    --primary-fixed: 215 226 255;
-    --primary-fixed-dim: 181 200 227;
-    --on-primary-fixed: 8 27 56;
-    --on-primary-fixed-variant: 54 72 94;
-    --inverse-primary: 181 200 227;
+    --primary: 26, 43, 73;
+    --on-primary: 255, 255, 255;
+    --primary-container: 11, 31, 51;
+    --on-primary-container: 182, 199, 236;
+    --primary-fixed: 215, 226, 255;
+    --primary-fixed-dim: 181, 200, 227;
+    --on-primary-fixed: 8, 27, 56;
+    --on-primary-fixed-variant: 54, 72, 94;
+    --inverse-primary: 181, 200, 227;
 
-    --secondary: 138 100 0;
-    --on-secondary: 255 255 255;
-    --secondary-container: 254 195 66;
-    --on-secondary-container: 74 52 0;
-    --secondary-fixed: 255 222 164;
-    --secondary-fixed-dim: 248 189 61;
-    --on-secondary-fixed: 38 25 0;
-    --on-secondary-fixed-variant: 93 66 0;
+    --secondary: 138, 100, 0;
+    --on-secondary: 255, 255, 255;
+    --secondary-container: 254, 195, 66;
+    --on-secondary-container: 74, 52, 0;
+    --secondary-fixed: 255, 222, 164;
+    --secondary-fixed-dim: 248, 189, 61;
+    --on-secondary-fixed: 38, 25, 0;
+    --on-secondary-fixed-variant: 93, 66, 0;
 
-    --tertiary: 79 70 229;
-    --on-tertiary: 255 255 255;
-    --tertiary-container: 237 233 254;
-    --on-tertiary-container: 51 35 204;
+    --tertiary: 79, 70, 229;
+    --on-tertiary: 255, 255, 255;
+    --tertiary-container: 237, 233, 254;
+    --on-tertiary-container: 51, 35, 204;
 
-    --error: 186 26 26;
-    --on-error: 255 255 255;
-    --error-container: 255 218 214;
-    --on-error-container: 147 0 10;
+    --error: 186, 26, 26;
+    --on-error: 255, 255, 255;
+    --error-container: 255, 218, 214;
+    --on-error-container: 147, 0, 10;
 
-    --success: 24 121 78;
-    --success-container: 220 252 231;
-    --on-success-container: 22 101 52;
+    --success: 24, 121, 78;
+    --success-container: 220, 252, 231;
+    --on-success-container: 22, 101, 52;
 
     --scrim: rgba(15, 23, 42, 0.45);
     color-scheme: light;
@@ -66,51 +66,51 @@
     /* Deeper and a touch less blue than the surface ramp it replaced: the old
        set was saturated enough to read as navy rather than as "dark", and the
        tiers sat too close together to separate a card from its background. */
-    --background: 14 18 28;
-    --on-background: 230 234 243;
-    --surface: 14 18 28;
-    --surface-dim: 9 12 19;
-    --surface-bright: 46 54 71;
-    --surface-container-lowest: 18 23 34;
-    --surface-container-low: 23 29 42;
-    --surface-container: 27 34 49;
-    --surface-container-high: 34 42 59;
-    --surface-container-highest: 42 51 70;
-    --surface-variant: 42 51 70;
-    --on-surface: 230 234 243;
-    --on-surface-variant: 176 185 202;
-    --inverse-surface: 230 234 243;
-    --inverse-on-surface: 23 29 42;
-    --outline: 132 141 158;
+    --background: 14, 18, 28;
+    --on-background: 230, 234, 243;
+    --surface: 14, 18, 28;
+    --surface-dim: 9, 12, 19;
+    --surface-bright: 46, 54, 71;
+    --surface-container-lowest: 18, 23, 34;
+    --surface-container-low: 23, 29, 42;
+    --surface-container: 27, 34, 49;
+    --surface-container-high: 34, 42, 59;
+    --surface-container-highest: 42, 51, 70;
+    --surface-variant: 42, 51, 70;
+    --on-surface: 230, 234, 243;
+    --on-surface-variant: 176, 185, 202;
+    --inverse-surface: 230, 234, 243;
+    --inverse-on-surface: 23, 29, 42;
+    --outline: 132, 141, 158;
     /* Raised so dividers and hairlines actually register on dark surfaces. */
-    --outline-variant: 74 84 104;
+    --outline-variant: 74, 84, 104;
 
-    --primary: 175 196 226;
-    --on-primary: 10 27 46;
-    --primary-container: 32 48 74;
-    --on-primary-container: 214 226 252;
-    --inverse-primary: 26 43 73;
+    --primary: 175, 196, 226;
+    --on-primary: 10, 27, 46;
+    --primary-container: 32, 48, 74;
+    --on-primary-container: 214, 226, 252;
+    --inverse-primary: 26, 43, 73;
 
-    --secondary: 245 190 74;
-    --on-secondary: 58 41 0;
-    --secondary-container: 86 62 0;
-    --on-secondary-container: 255 224 170;
+    --secondary: 245, 190, 74;
+    --on-secondary: 58, 41, 0;
+    --secondary-container: 86, 62, 0;
+    --on-secondary-container: 255, 224, 170;
 
     /* Containers are backgrounds. In dark they have to be dark — the old
        indigo and blood red were vivid enough to fight the text on them. */
-    --tertiary: 186 184 250;
-    --on-tertiary: 28 18 122;
-    --tertiary-container: 45 38 110;
-    --on-tertiary-container: 224 222 255;
+    --tertiary: 186, 184, 250;
+    --on-tertiary: 28, 18, 122;
+    --tertiary-container: 45, 38, 110;
+    --on-tertiary-container: 224, 222, 255;
 
-    --error: 255 180 171;
-    --on-error: 96 0 4;
-    --error-container: 118 28 26;
-    --on-error-container: 255 220 216;
+    --error: 255, 180, 171;
+    --on-error: 96, 0, 4;
+    --error-container: 118, 28, 26;
+    --on-error-container: 255, 220, 216;
 
-    --success: 118 216 162;
-    --success-container: 22 74 45;
-    --on-success-container: 190 246 210;
+    --success: 118, 216, 162;
+    --success-container: 22, 74, 45;
+    --on-success-container: 190, 246, 210;
 
     --scrim: rgba(2, 5, 12, 0.66);
     color-scheme: dark;
@@ -152,18 +152,18 @@
 
 @layer components {
   .pt-safe {
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: 0;
   }
   .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: 0;
   }
   /* ── Surfaces ──────────────────────────────────────────────────────────── */
   .card {
     @apply bg-surface-container-lowest rounded-lg shadow-e1;
-    border: 1px solid rgb(15 23 42 / 0.06);
+    border: 1px solid rgba(15, 23, 42, 0.06);
   }
   .dark .card {
-    border-color: rgb(255 255 255 / 0.09);
+    border-color: rgba(255, 255, 255, 0.09);
   }
 
   /* ── Page containers ───────────────────────────────────────────────────────
@@ -180,13 +180,48 @@
   }
   /* Clears the fixed app bar, and the bottom nav that only exists on mobile. */
   .pt-appbar {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+    padding-top: 4.25rem;
   }
   .pb-nav {
-    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px) + 1rem);
+    padding-bottom: 5.5rem;
+  }
+  /* New/edit case pages swap the navigation for a fixed save bar. */
+  .pb-form-actions {
+    padding-bottom: 5.75rem;
+  }
+  .pb-form-footer {
+    padding-bottom: 0.75rem;
+  }
+  /*
+     A separate feature query keeps the non-notch fallback alive after CSS
+     minification. Android 7 parses the base values and ignores this block;
+     iOS and modern Android add their safe-area inset on top.
+  */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .pt-safe {
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .pt-appbar {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+    }
+    .pb-nav {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px) + 1rem);
+    }
+    .pb-form-actions {
+      padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    }
+    .pb-form-footer {
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    }
   }
   @media (min-width: 1024px) {
     .pb-nav {
+      padding-bottom: 3rem;
+    }
+    .pb-form-actions {
       padding-bottom: 3rem;
     }
   }
@@ -197,10 +232,10 @@
    * stays pale, which is how the hero ended up light-on-light.
    */
   .brand-panel {
-    background-color: rgb(26 43 73);
+    background-color: rgb(26, 43, 73);
   }
   .dark .brand-panel {
-    background-color: rgb(21 33 55);
+    background-color: rgb(21, 33, 55);
   }
 
   .pill {
@@ -220,15 +255,15 @@
            transition-colors placeholder:text-on-surface-variant/55;
     min-height: 3rem;
     padding: 0.625rem 0.875rem;
-    border: 1px solid rgb(var(--outline-variant) / 0.7);
+    border: 1px solid rgba(var(--outline-variant), 0.7);
   }
   .field:hover:not(:disabled):not(:focus) {
-    border-color: rgb(var(--outline) / 0.8);
+    border-color: rgba(var(--outline), 0.8);
   }
   .field:focus {
     @apply bg-surface-container-lowest outline-none;
     border-color: rgb(var(--primary));
-    box-shadow: 0 0 0 3px rgb(var(--primary) / 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--primary), 0.14);
   }
   .field:disabled {
     @apply cursor-not-allowed opacity-60;
@@ -238,7 +273,7 @@
   }
   .field-error:focus {
     border-color: rgb(var(--error));
-    box-shadow: 0 0 0 3px rgb(var(--error) / 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--error), 0.14);
   }
 
   /* Native select chrome is unstyleable, so we draw our own chevron. */
@@ -267,20 +302,20 @@
   /* Auth sits on a fixed dark panel in BOTH themes, so its inputs cannot use
      the theme tokens — they would invert with everything else. */
   .field-dark {
-    background-color: rgb(26 34 51);
-    border-color: rgb(255 255 255 / 0.14);
-    color: rgb(238 241 249);
+    background-color: rgb(26, 34, 51);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: rgb(238, 241, 249);
   }
   .field-dark::placeholder {
-    color: rgb(179 188 205 / 0.55);
+    color: rgba(179, 188, 205, 0.55);
   }
   .field-dark:hover:not(:disabled):not(:focus) {
-    border-color: rgb(255 255 255 / 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
   }
   .field-dark:focus {
-    background-color: rgb(20 27 43);
-    border-color: rgb(181 200 227);
-    box-shadow: 0 0 0 3px rgb(181 200 227 / 0.18);
+    background-color: rgb(20, 27, 43);
+    border-color: rgb(181, 200, 227);
+    box-shadow: 0 0 0 3px rgba(181, 200, 227, 0.18);
   }
 
   .field-textarea {
@@ -309,7 +344,7 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
     animation: shimmer 1.4s infinite;
   }
 
@@ -320,6 +355,13 @@
 }
 
 @layer utilities {
+  /* `dvh` is ignored by Android 7-era Chromium. Kept in the utility layer so
+     it can intentionally override Tailwind's `min-h-screen` fallback. */
+  .app-viewport {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
   .route-enter {
     animation: route-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
   }
@@ -333,6 +375,42 @@
   .scrim {
     background: var(--scrim);
     backdrop-filter: blur(4px);
+  }
+
+  /* Android 7 supports Grid gaps but not flex gaps. This runs only after the
+     runtime feature test adds `.no-flex-gap`, retaining the normal modern
+     layout while keeping essential controls and navigation spaced correctly. */
+  .no-flex-gap .flex.flex-col.gap-space-xxs > * + * { margin-top: 0.125rem; }
+  .no-flex-gap .flex.flex-col.gap-space-xs > * + * { margin-top: 0.25rem; }
+  .no-flex-gap .flex.flex-col.gap-space-sm > * + * { margin-top: 0.5rem; }
+  .no-flex-gap .flex.flex-col.gap-space-md > * + * { margin-top: 0.75rem; }
+  .no-flex-gap .flex.flex-col.gap-space-base > * + * { margin-top: 1rem; }
+  .no-flex-gap .flex.flex-col.gap-space-lg > * + * { margin-top: 1.25rem; }
+  .no-flex-gap .flex.flex-col.gap-space-xl > * + * { margin-top: 1.5rem; }
+  .no-flex-gap .flex.flex-col.gap-space-2xl > * + * { margin-top: 2rem; }
+  .no-flex-gap .flex.flex-col.gap-1 > * + * { margin-top: 0.25rem; }
+  .no-flex-gap .flex.flex-col.gap-1\.5 > * + * { margin-top: 0.375rem; }
+
+  .no-flex-gap .flex:not(.flex-col).gap-space-xxs > * + * { margin-left: 0.125rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-space-xs > * + * { margin-left: 0.25rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-space-sm > * + * { margin-left: 0.5rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-space-md > * + * { margin-left: 0.75rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-space-base > * + * { margin-left: 1rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-space-lg > * + * { margin-left: 1.25rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-1 > * + * { margin-left: 0.25rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-1\.5 > * + * { margin-left: 0.375rem; }
+  .no-flex-gap .flex:not(.flex-col).gap-0\.5 > * + * { margin-left: 0.125rem; }
+
+  /* A class list contains both `flex-col` and `sm:flex-row`, so the base
+     fallback above still matches after the responsive direction changes.
+     Reset that vertical margin and restore the horizontal spacing explicitly
+     for Chromium builds without flex-gap support. */
+  @media (min-width: 640px) {
+    .no-flex-gap .flex.flex-col.sm\:flex-row.gap-space-xs > * + * { margin-top: 0; margin-left: 0.25rem; }
+    .no-flex-gap .flex.flex-col.sm\:flex-row.gap-space-sm > * + * { margin-top: 0; margin-left: 0.5rem; }
+    .no-flex-gap .flex.flex-col.sm\:flex-row.gap-space-md > * + * { margin-top: 0; margin-left: 0.75rem; }
+    .no-flex-gap .flex.flex-col.sm\:flex-row.gap-space-base > * + * { margin-top: 0; margin-left: 1rem; }
+    .no-flex-gap .flex.flex-col.sm\:flex-row.gap-space-lg > * + * { margin-top: 0; margin-left: 1.25rem; }
   }
 }
 

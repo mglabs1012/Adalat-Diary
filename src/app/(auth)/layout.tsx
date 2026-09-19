@@ -19,7 +19,7 @@ const POINTS = [
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-[100dvh] flex-1 flex-col lg:flex-row">
+    <div className="app-viewport flex min-h-screen flex-1 flex-col lg:flex-row">
       {/* Brand panel — desktop only. */}
       <section className="relative hidden overflow-hidden bg-primary-fixed-dim lg:flex lg:w-[52%] lg:flex-col lg:justify-between lg:p-space-3xl xl:w-[55%]">
         <div

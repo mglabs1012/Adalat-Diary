@@ -7,10 +7,22 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-/** Captures Android's install banner so we can offer it from Chamber settings. */
+function isIosDevice() {
+  const agent = window.navigator.userAgent;
+  // iPadOS reports itself as macOS; touch points make that case distinguishable.
+  return /iPad|iPhone|iPod/i.test(agent) || (/Macintosh/i.test(agent) && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  const iosNavigator = navigator as Navigator & { standalone?: boolean };
+  return window.matchMedia('(display-mode: standalone)').matches || iosNavigator.standalone === true;
+}
+
+/** Captures Android's prompt and identifies iOS, which requires a guided A2HS flow. */
 export function useInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [isIos, setIsIos] = useState(false);
 
   useEffect(() => {
     const onPrompt = (e: Event) => {
@@ -24,7 +36,8 @@ export function useInstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
-    if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true);
+    setIsIos(isIosDevice());
+    if (isStandalone()) setInstalled(true);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
@@ -40,5 +53,5 @@ export function useInstallPrompt() {
     return outcome === 'accepted';
   }, [deferred]);
 
-  return { canInstall: Boolean(deferred) && !installed, installed, install };
+  return { canInstall: Boolean(deferred) && !installed, installed, isIos, install };
 }

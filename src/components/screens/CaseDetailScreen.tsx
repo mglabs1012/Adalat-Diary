@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { Sheet } from '@/components/ui/Sheet';
+import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
 
 type Tab = 'overview' | 'history';
 
@@ -224,32 +225,32 @@ export function CaseDetailScreen({ id }: { id: string }) {
           </div>
 
           <div className="flex flex-col gap-space-base">
-            <div
+            <ConnectedSegmentTrack
               role="tablist"
-              className="flex items-center gap-space-xs rounded-md bg-surface-container-high p-1"
             >
               {(
                 [
                   ['overview', 'Overview'],
                   ['history', `History (${record.history.length})`],
                 ] as const
-              ).map(([key, label]) => (
+              ).map(([key, label], index, tabs) => (
                 <button
                   key={key}
                   role="tab"
                   aria-selected={tab === key}
                   onClick={() => setTab(key)}
                   className={cn(
-                    'flex-1 rounded px-space-md py-2 text-label-md transition-all',
+                    'flex-1 px-space-md py-2 text-label-md transition-all',
+                    connectedSegmentShape(tab === key, index, tabs.length),
                     tab === key
-                      ? 'bg-surface-container-lowest text-primary shadow-e1'
-                      : 'text-on-surface-variant hover:text-primary',
+                      ? 'bg-primary text-on-primary shadow-e1'
+                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
                   )}
                 >
                   {label}
                 </button>
               ))}
-            </div>
+            </ConnectedSegmentTrack>
 
             {tab === 'overview' ? (
               <section className="flex flex-col gap-space-base">

@@ -37,13 +37,28 @@ export function useTheme() {
     }
     setPreference(stored);
     setReady(true);
+    apply(stored);
 
     if (stored !== 'system') return;
     // Follow the OS while the user has not made an explicit choice.
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => apply('system');
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    // addEventListener on MediaQueryList arrived after Android 7's Chrome.
+    const modernMq = mq as unknown as {
+      addEventListener?: (type: string, listener: () => void) => void;
+      removeEventListener?: (type: string, listener: () => void) => void;
+    };
+    if (typeof modernMq.addEventListener === 'function') {
+      modernMq.addEventListener('change', onChange);
+      return () => modernMq.removeEventListener?.('change', onChange);
+    }
+
+    const legacyMq = mq as unknown as {
+      addListener: (listener: () => void) => void;
+      removeListener: (listener: () => void) => void;
+    };
+    legacyMq.addListener(onChange);
+    return () => legacyMq.removeListener(onChange);
   }, []);
 
   const setTheme = useCallback((next: ThemePreference) => {

@@ -24,6 +24,19 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('load', register);
   }, []);
 
+  useEffect(() => {
+    // Android 7's Chromium understands `gap` for CSS Grid, but not for flex
+    // containers. Detect that exact hole and enable the small CSS fallback.
+    const probe = document.createElement('div');
+    probe.style.cssText = 'display:flex;flex-direction:column;row-gap:1px;position:absolute;visibility:hidden;';
+    probe.appendChild(document.createElement('span'));
+    probe.appendChild(document.createElement('span'));
+    document.body.appendChild(probe);
+    const supportsFlexGap = probe.scrollHeight === 1;
+    probe.parentNode?.removeChild(probe);
+    document.documentElement.classList.toggle('no-flex-gap', !supportsFlexGap);
+  }, []);
+
   return (
     <SWRConfig
       value={{

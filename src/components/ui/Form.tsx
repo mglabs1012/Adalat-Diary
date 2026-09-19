@@ -8,6 +8,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { cn } from '@/lib/utils/cn';
+import { connectedSegmentShape } from '@/components/ui/ConnectedSegments';
 import { Icon, type IconName } from './Icon';
 
 /**
@@ -25,28 +26,40 @@ export function FormSection({
   icon,
   description,
   aside,
+  iconTone = 'secondary',
   collapsible,
   defaultOpen = true,
+  openWhen = false,
   children,
 }: {
   title: string;
   icon?: IconName;
   description?: string;
   aside?: ReactNode;
+  iconTone?: 'secondary' | 'tertiary' | 'primary';
   /** Turns the header into a disclosure button with a rotating chevron. */
   collapsible?: boolean;
   defaultOpen?: boolean;
+  /** Keeps a disclosure visible while one of its contained fields is invalid. */
+  openWhen?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   const bodyId = useId();
+  const visible = open || openWhen;
+  const iconToneClass =
+    iconTone === 'tertiary'
+      ? 'bg-tertiary/10 text-tertiary ring-tertiary/20'
+      : iconTone === 'primary'
+        ? 'bg-primary/10 text-primary ring-primary/20'
+        : 'bg-secondary/10 text-secondary ring-secondary/20';
 
   const heading = (
     <>
       <div className="flex min-w-0 items-start gap-space-sm">
         {icon ? (
-          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
-            <Icon name={icon} size={16} />
+          <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset', iconToneClass)}>
+            <Icon name={icon} size={18} />
           </span>
         ) : null}
         <div className="min-w-0 text-left">
@@ -57,14 +70,16 @@ export function FormSection({
         </div>
       </div>
       {collapsible ? (
-        <Icon
-          name="chevron"
-          size={16}
-          className={cn(
-            'mt-1 shrink-0 text-on-surface-variant transition-transform',
-            open && 'rotate-90',
-          )}
-        />
+        <span className="flex shrink-0 items-center gap-space-sm">
+          {aside}
+          <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
+            <Icon
+              name="chevron"
+              size={16}
+              className={cn('transition-transform', visible && 'rotate-90')}
+            />
+          </span>
+        </span>
       ) : (
         aside
       )}
@@ -72,17 +87,17 @@ export function FormSection({
   );
 
   const headerClass =
-    'flex w-full items-start justify-between gap-space-md bg-surface-container-low/60 px-space-base py-space-md';
+    'flex w-full items-start justify-between gap-space-md px-space-lg pt-space-lg pb-space-md';
 
   return (
-    <section className="card overflow-hidden">
+    <section className="card overflow-hidden rounded-xl">
       {collapsible ? (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
+          aria-expanded={visible}
           aria-controls={bodyId}
-          className={cn(headerClass, 'transition-colors hover:bg-surface-container-low', open && 'border-b border-on-surface/5')}
+          className={cn(headerClass, 'transition-colors hover:bg-surface-container-low', visible && 'border-b border-on-surface/5')}
         >
           {heading}
         </button>
@@ -90,7 +105,7 @@ export function FormSection({
         <header className={cn(headerClass, 'border-b border-on-surface/5')}>{heading}</header>
       )}
 
-      <div id={bodyId} hidden={!open} className="p-space-base lg:p-space-lg">
+      <div id={bodyId} hidden={!visible} className="px-space-lg pb-space-lg lg:pb-space-xl">
         {children}
       </div>
     </section>
@@ -277,10 +292,10 @@ export function SegmentedInput<T extends string>({
     <div
       role="radiogroup"
       aria-describedby={ids?.describedBy}
-      className="grid gap-space-sm"
+      className="grid gap-0.5 rounded-full bg-surface-container-high p-1"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
-      {options.map((o) => {
+      {options.map((o, index) => {
         const active = o.id === value;
         return (
           <button
@@ -290,10 +305,11 @@ export function SegmentedInput<T extends string>({
             aria-checked={active}
             onClick={() => onChange(o.id)}
             className={cn(
-              'flex min-h-12 flex-col items-center justify-center rounded px-space-sm py-space-sm text-label-md transition-colors',
+              'flex min-h-12 flex-col items-center justify-center px-space-sm py-space-sm text-label-md transition-colors',
+              connectedSegmentShape(active, index, options.length),
               active
                 ? 'bg-primary text-on-primary shadow-e1'
-                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high',
+                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
             )}
           >
             {o.label}
@@ -376,8 +392,10 @@ export function Checkbox({
  */
 export function FormActions({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-screen-margin border-t border-on-surface/5 bg-surface/92 px-screen-margin py-space-md backdrop-blur-xl lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:backdrop-blur-none">
-      <div className="flex items-center gap-space-sm lg:justify-end">{children}</div>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-on-surface/8 bg-surface/95 px-screen-margin pb-form-footer pt-space-md shadow-nav-up backdrop-blur-xl lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none lg:backdrop-blur-none">
+      <div className="mx-auto flex max-w-screen-sm items-center gap-space-sm lg:max-w-form lg:justify-end">
+        {children}
+      </div>
     </div>
   );
 }

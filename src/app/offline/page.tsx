@@ -20,7 +20,7 @@ export default function OfflinePage() {
   }, [online, router]);
 
   return (
-    <main className="flex min-h-[100dvh] flex-1 flex-col items-center justify-center gap-space-base px-screen-margin py-space-3xl text-center">
+    <main className="app-viewport flex min-h-screen flex-1 flex-col items-center justify-center gap-space-base px-screen-margin py-space-3xl text-center">
       <span className="flex h-20 w-20 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
         <Icon name="offline" size={34} />
       </span>

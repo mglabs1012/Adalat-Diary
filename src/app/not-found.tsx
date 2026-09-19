@@ -5,7 +5,7 @@ export const metadata = { title: 'Page not found' };
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-[100dvh] flex-1 flex-col items-center justify-center gap-space-base px-screen-margin py-space-3xl text-center">
+    <main className="app-viewport flex min-h-screen flex-1 flex-col items-center justify-center gap-space-base px-screen-margin py-space-3xl text-center">
       <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-surface-container">
         <Icon name="search" size={40} className="text-on-surface-variant" />
         <span className="tnum absolute -bottom-1 rounded-full bg-primary px-space-sm py-0.5 text-label-sm uppercase tracking-widest text-on-primary">
