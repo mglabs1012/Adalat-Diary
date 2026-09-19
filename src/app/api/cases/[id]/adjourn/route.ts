@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     await connectDB();
 
     const current = await CaseModel.findOne({ _id: id, ownerId })
-      .select('nextDate stage history hearingDates')
+      .select('nextDate stage history.date')
       .lean()
       .exec();
     if (!current) return fail('Case not found.', 404);

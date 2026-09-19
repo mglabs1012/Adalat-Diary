@@ -57,7 +57,10 @@ export interface CaseRecord {
   nextDate?: string | null;
   /**
    * Every day this matter occupies in the diary — its previous date, its next
-   * date and every date in its history, as ISO UTC midnights.
+   * date and every date in its history, as `yyyy-MM-dd`.
+   *
+   * A day, not an instant: the time part carried no information and cost
+   * 14 bytes a date on every row of a 250-row diary query.
    * See lib/data/hearingDates.
    */
   hearingDates: string[];

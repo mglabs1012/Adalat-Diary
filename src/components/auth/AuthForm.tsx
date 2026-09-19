@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '@/lib/api/client';
-import { loginSchema, signupSchema } from '@/lib/validation/auth';
+import { checkLogin, checkSignup, normaliseUsername } from '@/lib/validation/credentials';
 import { toast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
@@ -59,18 +59,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
     e.preventDefault();
     if (busy) return;
 
-    // Validate with the same Zod schema the server uses.
-    const schema = mode === 'signup' ? signupSchema : loginSchema;
-    const parsed = schema.safeParse({ username, password, remember });
-    if (!parsed.success) {
-      const next: Errors = {};
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[0];
-        if (field === 'username' || field === 'password') next[field] ??= issue.message;
-      }
-      setErrors(next);
+    // The same rules the server enforces, minus the validation library —
+    // see lib/validation/credentials. The server remains authoritative.
+    const found = mode === 'signup' ? checkSignup(username, password) : checkLogin(username, password);
+    if (found.username || found.password) {
+      setErrors(found);
       return;
     }
+    const credentials = { username: normaliseUsername(username), password, remember };
 
     setBusy(true);
     setErrors({});
@@ -79,7 +75,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       const res = await fetch(copy.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(credentials),
       });
       const body = await res.json().catch(() => null);
 

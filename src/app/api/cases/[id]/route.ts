@@ -42,27 +42,32 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     const data = caseUpdateSchema.parse(body);
 
-    // Editing a date moves the matter to a different page of the diary, so the
-    // derived days are recomputed from the record as it will be after the
-    // patch — read first, merge, then write once.
-    const current = await CaseModel.findOne({ _id: id, ownerId })
-      .select('preDate nextDate history')
-      .lean()
-      .exec();
-    if (!current) return fail('Case not found.', 404);
+    // Only a change of date moves the matter to a different page of the diary.
+    // Every other edit — a note, a phone number, the stage — leaves the
+    // derived days alone, and most edits are of that kind, so the extra read
+    // is paid for only when it buys something.
+    const movesInDiary = 'preDate' in data || 'nextDate' in data;
+
+    let hearingDates: Date[] | undefined;
+    if (movesInDiary) {
+      // history.date only: the array can hold a hundred entries and the
+      // derivation needs nothing else from them.
+      const current = await CaseModel.findOne({ _id: id, ownerId })
+        .select('preDate nextDate history.date')
+        .lean()
+        .exec();
+      if (!current) return fail('Case not found.', 404);
+
+      hearingDates = computeHearingDates({
+        preDate: 'preDate' in data ? data.preDate : current.preDate,
+        nextDate: 'nextDate' in data ? data.nextDate : current.nextDate,
+        history: current.history,
+      });
+    }
 
     const doc = await CaseModel.findOneAndUpdate(
       { _id: id, ownerId },
-      {
-        $set: {
-          ...data,
-          hearingDates: computeHearingDates({
-            preDate: 'preDate' in data ? data.preDate : current.preDate,
-            nextDate: 'nextDate' in data ? data.nextDate : current.nextDate,
-            history: current.history,
-          }),
-        },
-      },
+      { $set: hearingDates ? { ...data, hearingDates } : data },
       { new: true, runValidators: true },
     )
       .lean()

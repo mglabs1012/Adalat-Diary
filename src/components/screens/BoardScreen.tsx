@@ -43,7 +43,9 @@ export function BoardScreen() {
   const { stats, isLoading: statsLoading } = useStats();
   const { cases: today, isLoading: todayLoading } = useCases({ filter: 'today', pageSize: 20 });
   const { cases: upcoming } = useCases({ filter: 'upcoming', pageSize: 5 });
-  const { cases: undated } = useCases({ filter: 'undated', pageSize: 5 });
+  // Gated on the counter the board already has: most chambers have none, and
+  // an empty section is not worth a request on every load.
+  const { cases: undated } = useCases({ filter: 'undated', pageSize: 5 }, stats.undated > 0);
 
   const dayKey = todayKey();
   const tomorrowKey = dayKeyFromToday(1);

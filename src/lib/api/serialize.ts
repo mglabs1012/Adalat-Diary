@@ -4,17 +4,16 @@ import type { CaseListItem, CaseRecord } from '@/types/case';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Diary days for the wire.  The stored array is authoritative, but a document
- * written before the field existed — or one returned from a projection that
- * predates a backfill — still has to land on the right page, so fall back to
- * deriving it from the dates the document does carry.
+ * Diary days for the wire, as `yyyy-MM-dd`.
+ *
+ * The stored array is authoritative, but a document written before the field
+ * existed — or one returned from a projection that predates a backfill — has
+ * to land on the right page too, so fall back to deriving it.
  */
 function diaryDays(doc: any): string[] {
   const stored: unknown = doc.hearingDates;
-  if (Array.isArray(stored) && stored.length) {
-    return stored.map((d) => new Date(d).toISOString());
-  }
-  return computeHearingDates(doc).map((d) => d.toISOString());
+  const source = Array.isArray(stored) && stored.length ? stored : computeHearingDates(doc);
+  return source.map((d: Date | string) => new Date(d).toISOString().slice(0, 10));
 }
 
 /**

@@ -94,9 +94,27 @@ export function useCases(opts: UseCasesOptions = {}, enabled = true) {
   };
 }
 
-/** Invalidate every cases/stats key after a write. */
-export function revalidateDiary() {
-  return globalMutate(isDiaryKey, undefined, { revalidate: true });
+let queuedRefresh: Promise<unknown> | null = null;
+
+/**
+ * Invalidate every cases/stats key after a write.
+ *
+ * Coalesced on a short trailing edge: an import, an outbox flush or two quick
+ * adjournments would otherwise each fire a refetch of the board, the docket,
+ * the diary and the counters — a dozen requests racing the navigation the
+ * user is actually waiting on. One pass covers them all.
+ */
+export function revalidateDiary(): Promise<unknown> {
+  if (queuedRefresh) return queuedRefresh;
+
+  queuedRefresh = new Promise((resolve) => {
+    setTimeout(() => {
+      queuedRefresh = null;
+      resolve(globalMutate(isDiaryKey, undefined, { revalidate: true }));
+    }, 80);
+  });
+
+  return queuedRefresh;
 }
 
 /**

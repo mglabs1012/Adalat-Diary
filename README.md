@@ -159,16 +159,34 @@ row naming a court that does not exist rather than filing it in the wrong place.
 Three documents, all built in the browser by `lib/pdf/diary.ts` and handed to the Web Share
 API — on Android that puts the file straight into WhatsApp; everywhere else it downloads.
 
-| Document | Where | Contents |
-| --- | --- | --- |
-| **Day cause list** | Diary → the share icon on any day heading; Board → *Share PDF* | One table of every matter carrying that date |
-| **Monthly diary** | Diary → *Share PDF*; Chamber → *Share as PDF* | **A separate table per day**, each under its own dated heading, in date order |
-| **Case sheet** | Case detail → *PDF* | The full record, its chamber notes and its procedural history |
+| Document | Orientation | Where | Contents |
+| --- | --- | --- | --- |
+| **Day cause list** | Landscape | Diary → the share icon on any day heading; Board → *Share PDF* | One table of everything on that day's page |
+| **Monthly diary** | Landscape | Diary → *Share PDF*; Chamber → *Share as PDF* | **A separate table per day**, each under its own dated heading, in date order |
+| **Case sheet** | Portrait | Case detail → *PDF* | The full record, its chamber notes and its procedural history |
+
+The cause lists carry the register's own columns, in the register's own order:
+
+```
+Sr No · CRN · Pre Date · Court · Party 1 · Party 2 · Stage · Next Date · Status · Listed For
+```
+
+`Status` is *Listed*, *Heard* or *Disposed* — a day's page holds matters that were before
+the court that day and have since been adjourned as well as matters still to be taken up,
+and the column says which a row is. `Next Date` reads **Awaited** where the court has not
+given one.
+
+They print landscape because they have to: a real CRN is an unbreakable eighteen-character
+token, and on A4 portrait there is no width at which it and two party names all fit without
+one of them splitting through the middle of a word. Court codes still exceed their column —
+`PISANGAN-GRAM-NYAYALAYA` is the worst — so they are broken at the hyphen nearest their
+centre rather than wherever the text ran out.
 
 Each is drawn in the app's own colours — navy header band with the ochre rule, tabular
 figures, zebra rows — with a footer carrying the chamber, the generation time and
-`Page n of m`. jsPDF is `import()`ed at the moment you press share, so a session that never
-prints never downloads it.
+`Page n of m`, and a header summarising the day (`4 matters · 2 listed · 2 already heard`).
+No row is ever split across a page. jsPDF is `import()`ed at the moment you press share, so
+a session that never prints never downloads it.
 
 A single record also shares as **plain text** (the cause slip) from the share icon on any
 docket card, or from the app bar on the case detail screen.

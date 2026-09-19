@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import type { CaseRecord, StageId } from '@/types/case';
+import type { CaseRecord, HearingEntry, StageId } from '@/types/case';
 import { casesApi } from '@/lib/api/client';
+import { computeHearingDates } from '@/lib/data/hearingDates';
 import { enqueue } from '@/lib/offline/outbox';
 import { STAGES } from '@/lib/constants/stages';
 import { PURPOSE_SUGGESTIONS } from '@/lib/constants/courts';
@@ -53,6 +54,43 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
   const [disposed, setDisposed] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  /**
+   * What the record will look like once the server agrees.
+   *
+   * Recording a date is the most frequent thing anyone does in this app, and
+   * it is done standing in a corridor on a patchy connection. Waiting on a
+   * round trip to Mongo before the sheet even closes makes the whole app feel
+   * slow, so the result is painted immediately and reconciled underneath. The
+   * payload is small and fully validated here, so the server rejecting it is
+   * the rare case — and when it does, the earlier state is put back.
+   */
+  function projected(): CaseRecord {
+    const heardIso = new Date(heardOn).toISOString();
+    const nextIso = disposed || !nextDate ? null : new Date(nextDate).toISOString();
+    const entry: HearingEntry = {
+      date: heardIso,
+      stage,
+      note: note || (disposed ? 'Matter disposed of' : 'Adjourned'),
+      recordedAt: new Date().toISOString(),
+    };
+
+    return {
+      ...record,
+      preDate: heardIso,
+      nextDate: nextIso,
+      stage: disposed ? 'disposed' : stage,
+      status: disposed ? 'disposed' : 'active',
+      purpose: purpose || record.purpose,
+      history: [entry, ...record.history],
+      hearingDates: computeHearingDates({
+        preDate: heardIso,
+        nextDate: nextIso,
+        history: [entry, ...record.history],
+      }).map((d) => d.toISOString().slice(0, 10)),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
   async function submit() {
     if (saving) return;
     if (!disposed && !nextDate) {
@@ -65,12 +103,11 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
       return;
     }
 
-    setSaving(true);
     const payload = { nextDate: disposed ? null : nextDate, heardOn, stage, purpose, note, disposed };
-    let saved: CaseRecord | undefined;
 
-    try {
-      if (!online) {
+    if (!online) {
+      setSaving(true);
+      try {
         await enqueue({
           url: `/api/cases/${record.id}/adjourn`,
           method: 'POST',
@@ -78,18 +115,34 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
           label: `Next date for ${record.crn || record.party1}`,
         });
         toast('Recorded on device — will sync when online', 'success');
-      } else {
-        saved = await casesApi.adjourn(record.id, payload);
-        await updateCachedCase(saved);
-        void revalidateDiary();
-        toast(disposed ? 'Matter marked disposed' : 'Next date recorded', 'success');
+        onDone(projected());
+        onClose();
+      } catch (err) {
+        toast(err instanceof Error ? err.message : 'Could not record the date', 'error');
+      } finally {
+        setSaving(false);
       }
-      onDone(saved);
-      onClose();
+      return;
+    }
+
+    // Paint it, close, and let the write settle behind the user.
+    const optimistic = projected();
+    void updateCachedCase(optimistic);
+    onDone(optimistic);
+    onClose();
+    toast(disposed ? 'Matter marked disposed' : 'Next date recorded', 'success');
+
+    try {
+      const saved = await casesApi.adjourn(record.id, payload);
+      void updateCachedCase(saved);
+      void revalidateDiary();
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Could not record the date', 'error');
-    } finally {
-      setSaving(false);
+      void updateCachedCase(record);
+      void revalidateDiary();
+      toast(
+        err instanceof Error ? `${err.message} — the earlier entry is back` : 'Could not record the date',
+        'error',
+      );
     }
   }
 

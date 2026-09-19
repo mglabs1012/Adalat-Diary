@@ -76,6 +76,9 @@ CaseSchema.index(
 CaseSchema.index({ ownerId: 1, status: 1, nextDate: 1 });
 // The diary page: every matter that touches a given day, listed or already heard.
 CaseSchema.index({ ownerId: 1, hearingDates: 1 });
+// "Awaiting a next date": matches on status + a null nextDate, then sorts by
+// when the matter was last before the court.
+CaseSchema.index({ ownerId: 1, status: 1, preDate: -1 });
 // Pinned-first docket ordering.
 CaseSchema.index({ ownerId: 1, pinned: -1, nextDate: 1 });
 // Free-text lookup across the fields an advocate actually searches by.

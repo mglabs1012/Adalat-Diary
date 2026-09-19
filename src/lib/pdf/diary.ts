@@ -22,11 +22,10 @@ const HAIRLINE: [number, number, number] = [205, 211, 224];
 const ZEBRA: [number, number, number] = [244, 246, 251];
 const DAY_BAND: [number, number, number] = [233, 238, 248];
 
-const PAGE = { width: 210, height: 297 };
 const MARGIN = 14;
-const HEADER_H = 26;
-const CONTENT_TOP = HEADER_H + 8;
-const FOOTER_TOP = PAGE.height - 16;
+const HEADER_H = 24;
+const CONTENT_TOP = HEADER_H + 9;
+const FOOTER_H = 16;
 
 export interface PdfMeta {
   /** The chamber this was generated for — the signed-in username. */
@@ -35,6 +34,16 @@ export interface PdfMeta {
 }
 
 type Doc = import('jspdf').jsPDF;
+
+/**
+ * Page geometry, read off the document rather than assumed, so the landscape
+ * cause lists and the portrait case sheet share every drawing routine.
+ */
+function box(doc: Doc) {
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  return { width, height, footerTop: height - FOOTER_H, content: width - MARGIN * 2 };
+}
 
 async function loadPdf() {
   const [{ jsPDF }, autoTableModule] = await Promise.all([
@@ -53,53 +62,51 @@ function paintChrome(doc: Doc, title: string, subtitle: string, meta: PdfMeta) {
   const pages = doc.getNumberOfPages();
   const generated = new Date();
 
+  const stamp = `${formatDate(generated)} at ${generated.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
+
   for (let page = 1; page <= pages; page++) {
     doc.setPage(page);
+    const { width, footerTop } = box(doc);
 
     // ── Header band ──────────────────────────────────────────────────────
     doc.setFillColor(...NAVY);
-    doc.rect(0, 0, PAGE.width, HEADER_H, 'F');
+    doc.rect(0, 0, width, HEADER_H, 'F');
     doc.setFillColor(...GOLD);
-    doc.rect(0, HEADER_H, PAGE.width, 1.2, 'F');
+    doc.rect(0, HEADER_H, width, 1.2, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text(meta.appName, MARGIN, 11);
+    doc.setFontSize(12.5);
+    doc.text(meta.appName, MARGIN, 10.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.8);
     doc.setTextColor(...GOLD);
-    doc.text('COURT DIARY', MARGIN, 16.5, { charSpace: 0.8 });
+    doc.text('COURT DIARY', MARGIN, 15.8, { charSpace: 0.8 });
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11.5);
-    doc.text(title, PAGE.width - MARGIN, 11, { align: 'right' });
+    doc.setFontSize(11);
+    doc.text(title, width - MARGIN, 10.5, { align: 'right' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(196, 211, 236);
-    doc.text(subtitle, PAGE.width - MARGIN, 16.5, { align: 'right' });
+    doc.text(subtitle, width - MARGIN, 15.8, { align: 'right' });
 
     // ── Footer ───────────────────────────────────────────────────────────
     doc.setDrawColor(...HAIRLINE);
     doc.setLineWidth(0.2);
-    doc.line(MARGIN, FOOTER_TOP, PAGE.width - MARGIN, FOOTER_TOP);
+    doc.line(MARGIN, footerTop, width - MARGIN, footerTop);
 
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.2);
     doc.setTextColor(...MUTED);
-    doc.text(`${meta.appName} · @${meta.chamber}`, MARGIN, FOOTER_TOP + 5);
-    doc.text(
-      `Generated ${formatDate(generated)} at ${generated.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`,
-      PAGE.width / 2,
-      FOOTER_TOP + 5,
-      { align: 'center' },
-    );
-    doc.text(`Page ${page} of ${pages}`, PAGE.width - MARGIN, FOOTER_TOP + 5, { align: 'right' });
+    doc.text(`${meta.appName} · @${meta.chamber}`, MARGIN, footerTop + 5);
+    doc.text(`Generated ${stamp}`, width / 2, footerTop + 5, { align: 'center' });
+    doc.text(`Page ${page} of ${pages}`, width - MARGIN, footerTop + 5, { align: 'right' });
   }
 }
 
@@ -108,7 +115,7 @@ const tableTheme = {
   styles: {
     font: 'helvetica',
     fontSize: 8,
-    cellPadding: { top: 2.1, right: 2, bottom: 2.1, left: 2 },
+    cellPadding: { top: 2, right: 1.8, bottom: 2, left: 1.8 },
     textColor: INK,
     lineColor: HAIRLINE,
     lineWidth: 0.15,
@@ -119,60 +126,58 @@ const tableTheme = {
     fillColor: NAVY_DEEP,
     textColor: [255, 255, 255] as [number, number, number],
     fontStyle: 'bold' as const,
-    fontSize: 7.5,
-    cellPadding: { top: 2.4, right: 2, bottom: 2.4, left: 2 },
+    fontSize: 7.2,
+    cellPadding: { top: 2.4, right: 1.8, bottom: 2.4, left: 1.8 },
+    lineColor: NAVY_DEEP,
   },
   alternateRowStyles: { fillColor: ZEBRA },
   // A row never splits across a page. Without this a three-line cause title
   // landing at the foot of a page leaves its last line stranded at the top of
   // the next one, under a repeated header and with every other cell blank.
   rowPageBreak: 'avoid' as const,
-  margin: { top: CONTENT_TOP, bottom: 22, left: MARGIN, right: MARGIN },
+  margin: { top: CONTENT_TOP, bottom: FOOTER_H + 7, left: MARGIN, right: MARGIN },
 };
 
 /**
- * Columns shared by every cause list.
+ * The cause-list columns: the register's own, in the register's own order.
  *
- * A day's page carries both the matters listed for it and the matters that
- * were heard on it and have since been adjourned, so the reader needs to know
- * which is which: the status column says so, and both dates stay on the row
- * so an adjournment reads at a glance.
+ * Two are added at the end rather than substituted in. A day's page carries
+ * matters that were heard on it and have since been adjourned as well as
+ * matters still listed for it, so `Status` says which a row is; `Listed For`
+ * is the purpose, which is most of why the list gets read at all.
  */
-function columns() {
-  return [
-    { header: '#', dataKey: 'index' },
-    // CRN and cause title share a column: a real CRN is one unbreakable
-    // 18-character token, and no column narrow enough to fit beside eight
-    // others can hold it without splitting it mid-number.
-    { header: 'Matter', dataKey: 'matter' },
-    { header: 'Court', dataKey: 'court' },
-    { header: 'Stage', dataKey: 'stage' },
-    { header: 'Status', dataKey: 'role' },
-    { header: 'Prev. date', dataKey: 'preDate' },
-    { header: 'Next date', dataKey: 'nextDate' },
-    { header: 'Listed for', dataKey: 'purpose' },
-  ];
-}
+const COLUMNS = [
+  { header: 'Sr No', dataKey: 'sr' },
+  { header: 'CRN', dataKey: 'crn' },
+  { header: 'Pre Date', dataKey: 'preDate' },
+  { header: 'Court', dataKey: 'court' },
+  { header: 'Party 1', dataKey: 'party1' },
+  { header: 'Party 2', dataKey: 'party2' },
+  { header: 'Stage', dataKey: 'stage' },
+  { header: 'Next Date', dataKey: 'nextDate' },
+  { header: 'Status', dataKey: 'status' },
+  { header: 'Listed For', dataKey: 'purpose' },
+];
 
 /**
- * A4 portrait leaves 182mm between the margins. These add up to well under
- * that so the 'auto' column keeps ~35mm — enough that "Cross examination"
- * wraps between words instead of being hyphenated mid-word.
+ * Landscape A4 leaves 269mm between the margins. The fixed widths below come
+ * to 240mm, which leaves 29mm for the single 'auto' column.
  */
-function columnStyles() {
-  return {
-    index: { cellWidth: 6.5, halign: 'center', textColor: MUTED },
-    matter: { cellWidth: 52 },
-    court: { cellWidth: 24, fontSize: 7.5 },
-    // Wide enough for "Cross Examination" to break between its words rather
-    // than through the middle of one.
-    stage: { cellWidth: 23, fontSize: 7.5 },
-    role: { cellWidth: 13, halign: 'center', fontSize: 7, textColor: MUTED },
-    preDate: { cellWidth: 16, halign: 'center', fontSize: 7.5 },
-    nextDate: { cellWidth: 16, halign: 'center', fontStyle: 'bold', fontSize: 7.5 },
-    purpose: { cellWidth: 'auto' },
-  } as Record<string, Record<string, unknown>>;
-}
+const COLUMN_STYLES: Record<string, Record<string, unknown>> = {
+  sr: { cellWidth: 10, halign: 'center', textColor: MUTED, fontSize: 7.5 },
+  crn: { cellWidth: 30, fontStyle: 'bold', fontSize: 7.5 },
+  preDate: { cellWidth: 20, halign: 'center', fontSize: 7.5 },
+  // Wide enough, at 7pt, that the longest code in the list —
+  // PISANGAN-GRAM-NYAYALAYA — fits on two lines split at its own hyphen,
+  // rather than autoTable adding a third line holding just a hyphen.
+  court: { cellWidth: 28, fontSize: 7 },
+  party1: { cellWidth: 44 },
+  party2: { cellWidth: 44 },
+  stage: { cellWidth: 29, fontSize: 7.5 },
+  nextDate: { cellWidth: 20, halign: 'center', fontStyle: 'bold', fontSize: 7.5 },
+  status: { cellWidth: 15, halign: 'center', fontSize: 7, textColor: MUTED },
+  purpose: { cellWidth: 'auto', fontSize: 7.5 },
+};
 
 /**
  * Court codes are single hyphenated tokens, and the longest of them —
@@ -182,7 +187,7 @@ function columnStyles() {
  * keeps the code legible and the column narrow.
  */
 function wrapCourt(code: string): string {
-  if (code.length <= 12) return code;
+  if (code.length <= 13) return code;
   const hyphens = [...code.matchAll(/-/g)].map((m) => m.index ?? 0);
   if (!hyphens.length) return code;
 
@@ -196,15 +201,38 @@ function wrapCourt(code: string): string {
 
 function rows(entries: readonly DiaryDayEntry[]) {
   return entries.map(({ record: c, role }, i) => ({
-    index: i + 1,
-    matter: `${c.crn || 'No CRN'}\n${causeTitle(c)}`,
-    court: c.courtRoom ? `${wrapCourt(c.court)}\n${c.courtRoom}` : wrapCourt(c.court),
-    stage: getStage(c.stage).label,
-    role: c.status === 'disposed' ? 'Disposed' : role === 'listed' ? 'Listed' : 'Heard',
+    sr: i + 1,
+    crn: c.crn || '—',
     preDate: c.preDate ? formatDate(c.preDate) : '—',
+    court: c.courtRoom ? `${wrapCourt(c.court)}\n${c.courtRoom}` : wrapCourt(c.court),
+    party1: c.party1,
+    party2: c.party2,
+    stage: getStage(c.stage).label,
     nextDate: c.nextDate ? formatDate(c.nextDate) : 'Awaited',
-    purpose: c.purpose ?? '—',
+    status: c.status === 'disposed' ? 'Disposed' : role === 'listed' ? 'Listed' : 'Heard',
+    purpose: c.purpose || '—',
   }));
+}
+
+/** "4 matters · 2 listed · 2 already heard" — the day's shape, in the header. */
+function tally(entries: readonly DiaryDayEntry[]): string {
+  const listed = entries.filter((e) => e.role === 'listed').length;
+  const heard = entries.length - listed;
+  const parts = [`${entries.length} matter${entries.length === 1 ? '' : 's'}`];
+  if (listed && heard) parts.push(`${listed} listed`, `${heard} already heard`);
+  return parts.join(' · ');
+}
+
+function emptyNote(doc: Doc, text: string, y: number) {
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(10);
+  doc.setTextColor(...MUTED);
+  doc.text(text, box(doc).width / 2, y, { align: 'center' });
+}
+
+/** Cause lists are landscape; only the single-case sheet stays portrait. */
+function landscape(jsPDF: typeof import('jspdf').jsPDF): Doc {
+  return new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
 }
 
 function fileSafe(text: string) {
@@ -219,32 +247,21 @@ export async function buildDayPdf(
   meta: PdfMeta,
 ): Promise<{ blob: Blob; filename: string }> {
   const { jsPDF, autoTable } = await loadPdf();
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const cases = entries;
+  const doc = landscape(jsPDF);
 
-  autoTable(doc, {
-    ...tableTheme,
-    startY: CONTENT_TOP,
-    columns: columns(),
-    body: rows(entries),
-    columnStyles: columnStyles(),
-  });
-
-  if (!cases.length) {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    doc.text('No matters listed on this date.', PAGE.width / 2, CONTENT_TOP + 14, {
-      align: 'center',
+  if (entries.length) {
+    autoTable(doc, {
+      ...tableTheme,
+      startY: CONTENT_TOP,
+      columns: COLUMNS,
+      body: rows(entries),
+      columnStyles: COLUMN_STYLES,
     });
+  } else {
+    emptyNote(doc, 'No matter was listed or heard on this date.', CONTENT_TOP + 14);
   }
 
-  paintChrome(
-    doc,
-    'Cause list',
-    `${formatLongDate(date)} · ${cases.length} matter${cases.length === 1 ? '' : 's'}`,
-    meta,
-  );
+  paintChrome(doc, 'Cause list', `${formatLongDate(date)} · ${tally(entries)}`, meta);
 
   return {
     blob: doc.output('blob'),
@@ -266,30 +283,27 @@ export async function buildMonthPdf(
   meta: PdfMeta,
 ): Promise<{ blob: Blob; filename: string }> {
   const { jsPDF, autoTable } = await loadPdf();
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = landscape(jsPDF);
+  const { width, footerTop, content } = box(doc);
 
   const total = groups.reduce((n, g) => n + g.entries.length, 0);
   let cursor = CONTENT_TOP;
 
   if (!groups.length) {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    doc.text('No matters listed in this month.', PAGE.width / 2, cursor + 14, { align: 'center' });
+    emptyNote(doc, 'No matter was listed or heard in this month.', cursor + 14);
   }
 
   groups.forEach((group, i) => {
     const headingH = 9;
     // Keep a day heading with its table header and at least one full row —
     // a heading alone at the foot of a page is worse than a short page.
-    const needed = headingH + 26;
-    if (i > 0 && cursor + needed > FOOTER_TOP - 6) {
+    if (i > 0 && cursor + headingH + 26 > footerTop - 6) {
       doc.addPage();
       cursor = CONTENT_TOP;
     }
 
     doc.setFillColor(...DAY_BAND);
-    doc.roundedRect(MARGIN, cursor, PAGE.width - MARGIN * 2, headingH, 1.5, 1.5, 'F');
+    doc.roundedRect(MARGIN, cursor, content, headingH, 1.5, 1.5, 'F');
     doc.setFillColor(...GOLD);
     doc.rect(MARGIN, cursor, 1.6, headingH, 'F');
 
@@ -301,21 +315,16 @@ export async function buildMonthPdf(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
-    doc.text(
-      `${group.entries.length} matter${group.entries.length === 1 ? '' : 's'}`,
-      PAGE.width - MARGIN - 3,
-      cursor + 6,
-      { align: 'right' },
-    );
+    doc.text(tally(group.entries), width - MARGIN - 3, cursor + 6, { align: 'right' });
 
     cursor += headingH + 2;
 
     autoTable(doc, {
       ...tableTheme,
       startY: cursor,
-      columns: columns(),
+      columns: COLUMNS,
       body: rows(group.entries),
-      columnStyles: columnStyles(),
+      columnStyles: COLUMN_STYLES,
     });
 
     // autoTable records where it stopped, including any page it broke onto.
@@ -345,13 +354,14 @@ export async function buildCasePdf(
 ): Promise<{ blob: Blob; filename: string }> {
   const { jsPDF, autoTable } = await loadPdf();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const { content, footerTop } = box(doc);
 
   let cursor = CONTENT_TOP;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(...NAVY);
-  const title = doc.splitTextToSize(causeTitle(record), PAGE.width - MARGIN * 2);
+  const title = doc.splitTextToSize(causeTitle(record), content) as string[];
   doc.text(title, MARGIN, cursor);
   cursor += title.length * 6.5 + 3;
 
@@ -366,14 +376,27 @@ export async function buildCasePdf(
   );
   cursor += 8;
 
+  // Named exactly as the cause list names them, so the two read as one set
+  // of records rather than two different vocabularies.
   const detail: [string, string][] = [
+    ['CRN', record.crn || '—'],
+    ['Case number', record.caseNo ?? '—'],
     ['Court', record.courtRoom ? `${record.court} · ${record.courtRoom}` : record.court],
     ['Presiding judge', record.judge ?? '—'],
+    ['Party 1', record.party1],
+    ['Party 2', record.party2],
     ['Stage', getStage(record.stage).label],
-    ['Previous date', record.preDate ? formatDate(record.preDate) : '—'],
-    ['Next date', record.status === 'disposed' ? 'Disposed' : formatDate(record.nextDate)],
+    ['Pre Date', record.preDate ? formatDate(record.preDate) : '—'],
+    [
+      'Next Date',
+      record.status === 'disposed'
+        ? 'Disposed'
+        : record.nextDate
+          ? formatDate(record.nextDate)
+          : 'Awaited',
+    ],
     ['Listed for', record.purpose ?? '—'],
-    ['Appearing for', record.appearingFor === 'party2' ? 'Respondent' : 'Petitioner'],
+    ['Appearing for', record.appearingFor === 'party2' ? 'Party 2' : 'Party 1'],
     ['Client', record.clientName ?? '—'],
     ['Client phone', record.clientPhone ?? '—'],
   ];
@@ -405,13 +428,13 @@ export async function buildCasePdf(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...INK);
-    const notes = doc.splitTextToSize(record.notes, PAGE.width - MARGIN * 2);
+    const notes = doc.splitTextToSize(record.notes, content) as string[];
     doc.text(notes, MARGIN, cursor);
     cursor += notes.length * 4.4 + 6;
   }
 
   if (record.history.length) {
-    if (cursor > FOOTER_TOP - 40) {
+    if (cursor > footerTop - 40) {
       doc.addPage();
       cursor = CONTENT_TOP;
     }
