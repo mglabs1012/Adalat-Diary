@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { CaseListItem, CaseListResponse, CaseRecord } from '@/types/case';
 import { casesKey } from '@/lib/api/keys';
+import { groupByDiaryDay } from '@/lib/data/diaryDays';
 import { caseRef, causeSlip } from '@/lib/utils/case';
 import { formatDate, toInputDate } from '@/lib/utils/date';
 import { sharePdf, shareText, type ShareOutcome } from '@/lib/utils/share';
@@ -33,19 +34,6 @@ async function fetchRange(from: string, to: string): Promise<CaseListItem[]> {
   return body.items;
 }
 
-/** Groups a flat list into one bucket per calendar day, in date order. */
-function groupByDay(cases: CaseListItem[]) {
-  const map = new Map<string, { key: string; date: string; cases: CaseListItem[] }>();
-  for (const c of cases) {
-    if (!c.nextDate) continue;
-    const key = c.nextDate.slice(0, 10);
-    const group = map.get(key) ?? { key, date: c.nextDate, cases: [] };
-    group.cases.push(c);
-    map.set(key, group);
-  }
-  return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
-}
-
 /**
  * Builds and shares diary PDFs. Everything is generated in the browser — the
  * records are already there, and a serverless function rendering PDFs would be
@@ -66,8 +54,12 @@ export function useDiaryPdf() {
       try {
         const day = toInputDate(date);
         const cases = await fetchRange(day, day);
+        // The page for a day holds everything that touched it — matters
+        // listed that day, and matters that were heard and have since moved
+        // on — which is what the shared grouper works out.
+        const [group] = groupByDiaryDay(cases, { from: day, to: day });
         const { buildDayPdf } = await import('@/lib/pdf/diary');
-        const { blob, filename } = await buildDayPdf(cases, date, meta);
+        const { blob, filename } = await buildDayPdf(group?.entries ?? [], date, meta);
         report(
           await sharePdf(blob, filename, `Cause list — ${formatDate(date)}`),
           'Cause list',
@@ -87,10 +79,16 @@ export function useDiaryPdf() {
       try {
         const first = new Date(month.getFullYear(), month.getMonth(), 1);
         const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-        const cases = await fetchRange(toInputDate(first), toInputDate(last));
+        const from = toInputDate(first);
+        const to = toInputDate(last);
+        const cases = await fetchRange(from, to);
 
         const { buildMonthPdf } = await import('@/lib/pdf/diary');
-        const { blob, filename } = await buildMonthPdf(groupByDay(cases), first, meta);
+        const { blob, filename } = await buildMonthPdf(
+          groupByDiaryDay(cases, { from, to }),
+          first,
+          meta,
+        );
         report(await sharePdf(blob, filename, 'Monthly diary'), 'Monthly diary');
       } catch (err) {
         toast(err instanceof Error ? err.message : 'Could not build the PDF', 'error');

@@ -5,6 +5,7 @@ import { CaseModel } from '@/lib/models/Case';
 import { adjournSchema } from '@/lib/validation/case';
 import { fail, requireOwnerId, handleError, ok, unauthorized } from '@/lib/utils/api';
 import { serialize } from '@/lib/api/serialize';
+import { computeHearingDates } from '@/lib/data/hearingDates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,40 +24,50 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     if (!ownerId) return unauthorized();
 
     const body = await req.json().catch(() => ({}));
-    const { nextDate, stage, note, purpose, disposed } = adjournSchema.parse(body ?? {});
+    const { nextDate, heardOn, stage, note, purpose, disposed } = adjournSchema.parse(body ?? {});
 
     if (!isValidObjectId(id)) return fail('Case not found.', 404);
     await connectDB();
 
     const current = await CaseModel.findOne({ _id: id, ownerId })
-      .select('nextDate stage')
+      .select('nextDate stage history hearingDates')
       .lean()
       .exec();
     if (!current) return fail('Case not found.', 404);
 
-    const heardOn = current.nextDate ? new Date(current.nextDate) : new Date();
+    // The day it was heard is the user's to state: a listing recorded that
+    // evening, or three days later from the chamber, still belongs on the day
+    // the court actually took it up. Only fall back to the clock when neither
+    // the client nor the record offers a date.
+    const heardDate = heardOn ?? (current.nextDate ? new Date(current.nextDate) : new Date());
     const nextStage = disposed ? 'disposed' : (stage ?? current.stage);
+    const entry = {
+      date: heardDate,
+      stage: stage ?? current.stage,
+      note: note || (disposed ? 'Matter disposed of' : 'Adjourned'),
+      recordedAt: new Date(),
+    };
 
     const doc = await CaseModel.findOneAndUpdate(
       { _id: id, ownerId },
       {
         $set: {
-          preDate: heardOn,
+          preDate: heardDate,
           nextDate: disposed ? null : nextDate,
           stage: nextStage,
           status: disposed ? 'disposed' : 'active',
+          // The day just heard stays in the diary alongside the new date, so
+          // the page for that day still shows what was before the court.
+          hearingDates: computeHearingDates({
+            preDate: heardDate,
+            nextDate: disposed ? null : nextDate,
+            history: [...(current.history ?? []), entry],
+          }),
           ...(purpose ? { purpose } : {}),
         },
         $push: {
           history: {
-            $each: [
-              {
-                date: heardOn,
-                stage: stage ?? current.stage,
-                note: note || (disposed ? 'Matter disposed of' : 'Adjourned'),
-                recordedAt: new Date(),
-              },
-            ],
+            $each: [entry],
             $position: 0,
             $slice: 100,
           },

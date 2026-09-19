@@ -55,6 +55,12 @@ export interface CaseRecord {
   stage: StageId;
   preDate?: string | null;
   nextDate?: string | null;
+  /**
+   * Every day this matter occupies in the diary — its previous date, its next
+   * date and every date in its history, as ISO UTC midnights.
+   * See lib/data/hearingDates.
+   */
+  hearingDates: string[];
   purpose?: string;
   appearingFor?: PartySide;
   clientName?: string;
@@ -86,6 +92,7 @@ export type CaseListItem = Pick<
   | 'stage'
   | 'preDate'
   | 'nextDate'
+  | 'hearingDates'
   | 'purpose'
   | 'pinned'
   | 'status'
@@ -107,6 +114,16 @@ export interface DiaryStats {
   active: number;
   overdue: number;
   disposed: number;
+  /** Active matters carrying no next date — awaiting one from the court. */
+  undated: number;
 }
 
-export type CaseFilter = 'all' | 'today' | 'upcoming' | 'overdue' | 'disposed' | 'range';
+export type CaseFilter =
+  | 'all'
+  | 'today'
+  | 'upcoming'
+  | 'overdue'
+  | 'disposed'
+  | 'range'
+  /** Active matters with no next date — they would otherwise fall out of view. */
+  | 'undated';

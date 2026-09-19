@@ -8,7 +8,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { connectedSegmentShape } from '@/components/ui/ConnectedSegments';
+import { connectedSegmentShape, connectedSegmentTone } from '@/components/ui/ConnectedSegments';
 import { Icon, type IconName } from './Icon';
 
 /**
@@ -292,7 +292,7 @@ export function SegmentedInput<T extends string>({
     <div
       role="radiogroup"
       aria-describedby={ids?.describedBy}
-      className="grid gap-0.5 rounded-full bg-surface-container-high p-1"
+      className="grid gap-1"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((o, index) => {
@@ -307,9 +307,7 @@ export function SegmentedInput<T extends string>({
             className={cn(
               'flex min-h-12 flex-col items-center justify-center px-space-sm py-space-sm text-label-md transition-colors',
               connectedSegmentShape(active, index, options.length),
-              active
-                ? 'bg-primary text-on-primary shadow-e1'
-                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
+              connectedSegmentTone(active),
             )}
           >
             {o.label}

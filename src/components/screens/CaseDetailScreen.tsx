@@ -19,7 +19,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { Sheet } from '@/components/ui/Sheet';
-import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
+import {
+  ConnectedSegmentTrack,
+  connectedSegmentShape,
+  connectedSegmentTone,
+} from '@/components/ui/ConnectedSegments';
 
 type Tab = 'overview' | 'history';
 
@@ -61,6 +65,7 @@ export function CaseDetailScreen({ id }: { id: string }) {
 
   const stage = getStage(record.stage);
   const urgency = urgencyOf(record.nextDate);
+  const awaitingDate = !record.nextDate;
   const disposed = record.status === 'disposed';
 
   async function togglePin() {
@@ -196,17 +201,21 @@ export function CaseDetailScreen({ id }: { id: string }) {
                 </span>
                 {!disposed ? (
                   <span className="tnum rounded bg-white/15 px-2 py-0.5 text-label-sm uppercase">
-                    {relativeDay(record.nextDate)}
+                    {awaitingDate ? 'Not yet given' : relativeDay(record.nextDate)}
                   </span>
                 ) : null}
               </div>
+              {/* An em-dash told the advocate nothing. A matter with no next
+                  date is waiting on the court, and it should say so. */}
               <p className="tnum mt-space-xs font-display text-headline-md lg:text-headline-lg">
-                {disposed ? 'Matter closed' : formatDate(record.nextDate)}
+                {disposed ? 'Matter closed' : awaitingDate ? 'Date awaited' : formatDate(record.nextDate)}
               </p>
               <p className="mt-space-xxs text-body-sm opacity-80">
-                {record.purpose
-                  ? `Listed for ${record.purpose}`
-                  : `Previous date · ${formatDate(record.preDate)}`}
+                {awaitingDate && !disposed
+                  ? `Last before the court on ${formatDate(record.preDate)} — it stays on that day in the diary`
+                  : record.purpose
+                    ? `Listed for ${record.purpose}`
+                    : `Previous date · ${formatDate(record.preDate)}`}
               </p>
 
               {!disposed ? (
@@ -242,9 +251,7 @@ export function CaseDetailScreen({ id }: { id: string }) {
                   className={cn(
                     'flex-1 px-space-md py-2 text-label-md transition-all',
                     connectedSegmentShape(tab === key, index, tabs.length),
-                    tab === key
-                      ? 'bg-primary text-on-primary shadow-e1'
-                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
+                    connectedSegmentTone(tab === key),
                   )}
                 >
                   {label}
@@ -256,7 +263,10 @@ export function CaseDetailScreen({ id }: { id: string }) {
               <section className="flex flex-col gap-space-base">
                 <div className="card grid grid-cols-2 gap-space-sm p-space-base lg:p-space-lg">
                   <Meta label="Previous date" value={formatDate(record.preDate)} />
-                  <Meta label="Next date" value={disposed ? '—' : formatDate(record.nextDate)} />
+                  <Meta
+                    label="Next date"
+                    value={disposed ? '—' : awaitingDate ? 'Awaited' : formatDate(record.nextDate)}
+                  />
                   <Meta label="Stage" value={stage.label} />
                   <Meta label="Status" value={disposed ? 'Disposed' : 'Active'} />
                 </div>

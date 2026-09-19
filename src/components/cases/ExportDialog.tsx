@@ -8,7 +8,11 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
 import { DatePicker, Field, Select } from '@/components/ui/Form';
 import { Icon } from '@/components/ui/Icon';
-import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
+import {
+  ConnectedSegmentTrack,
+  connectedSegmentShape,
+  connectedSegmentTone,
+} from '@/components/ui/ConnectedSegments';
 
 type Span = 'day' | 'month';
 
@@ -69,9 +73,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
               className={cn(
                 'flex min-h-11 flex-1 items-center justify-center gap-space-xs px-space-sm text-label-md transition-all',
                 connectedSegmentShape(span === id, index, choices.length),
-                span === id
-                  ? 'bg-primary text-on-primary shadow-e1'
-                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
+                connectedSegmentTone(span === id),
               )}
             >
               <Icon name={icon} size={15} />

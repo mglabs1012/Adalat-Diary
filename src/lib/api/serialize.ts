@@ -1,6 +1,21 @@
+import { computeHearingDates } from '@/lib/data/hearingDates';
 import type { CaseListItem, CaseRecord } from '@/types/case';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+/**
+ * Diary days for the wire.  The stored array is authoritative, but a document
+ * written before the field existed — or one returned from a projection that
+ * predates a backfill — still has to land on the right page, so fall back to
+ * deriving it from the dates the document does carry.
+ */
+function diaryDays(doc: any): string[] {
+  const stored: unknown = doc.hearingDates;
+  if (Array.isArray(stored) && stored.length) {
+    return stored.map((d) => new Date(d).toISOString());
+  }
+  return computeHearingDates(doc).map((d) => d.toISOString());
+}
 
 /**
  * Mongo document -> wire record. Dates become ISO strings, `_id` becomes `id`
@@ -19,6 +34,7 @@ export function serialize(doc: any): CaseRecord {
     stage: doc.stage,
     preDate: doc.preDate ? new Date(doc.preDate).toISOString() : null,
     nextDate: doc.nextDate ? new Date(doc.nextDate).toISOString() : null,
+    hearingDates: diaryDays(doc),
     purpose: doc.purpose ?? undefined,
     appearingFor: doc.appearingFor ?? 'party1',
     clientName: doc.clientName ?? undefined,
@@ -54,6 +70,7 @@ export function serializeListItem(doc: any): CaseListItem {
     stage: doc.stage,
     preDate: doc.preDate ? new Date(doc.preDate).toISOString() : null,
     nextDate: doc.nextDate ? new Date(doc.nextDate).toISOString() : null,
+    hearingDates: diaryDays(doc),
     purpose: doc.purpose ?? undefined,
     pinned: Boolean(doc.pinned),
     status: doc.status ?? 'active',

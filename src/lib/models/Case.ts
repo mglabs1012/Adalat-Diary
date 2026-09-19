@@ -32,6 +32,14 @@ const CaseSchema = new Schema(
     clientPhone: { type: String, trim: true, maxlength: 20 },
     notes: { type: String, trim: true, maxlength: 5000 },
 
+    /**
+     * Every day this matter sits on a diary page — derived from preDate,
+     * nextDate and history by lib/data/hearingDates.  Kept on the document so
+     * "what is listed on this day" is one multikey index lookup instead of a
+     * three-branch $or across two fields and an array.
+     */
+    hearingDates: { type: [Date], default: [] },
+
     pinned: { type: Boolean, default: false },
     status: { type: String, enum: ['active', 'disposed'], default: 'active', index: true },
     history: { type: [HearingEntrySchema], default: [] },
@@ -66,6 +74,8 @@ CaseSchema.index(
 );
 // The hot path: "what is listed next" — covers Board, Diary and the docket sort.
 CaseSchema.index({ ownerId: 1, status: 1, nextDate: 1 });
+// The diary page: every matter that touches a given day, listed or already heard.
+CaseSchema.index({ ownerId: 1, hearingDates: 1 });
 // Pinned-first docket ordering.
 CaseSchema.index({ ownerId: 1, pinned: -1, nextDate: 1 });
 // Free-text lookup across the fields an advocate actually searches by.

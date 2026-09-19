@@ -14,7 +14,11 @@ import { ProfileCard } from '@/components/settings/ProfileCard';
 import { ExportDialog } from '@/components/cases/ExportDialog';
 import { ImportDialog } from '@/components/cases/ImportDialog';
 import { Button } from '@/components/ui/Button';
-import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
+import {
+  ConnectedSegmentTrack,
+  connectedSegmentShape,
+  connectedSegmentTone,
+} from '@/components/ui/ConnectedSegments';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Sheet } from '@/components/ui/Sheet';
 
@@ -106,9 +110,7 @@ export function SettingsScreen() {
                       className={cn(
                         'flex min-h-11 flex-1 items-center justify-center gap-space-xs px-space-xs text-label-md transition-all',
                         connectedSegmentShape(active, index, THEMES.length),
-                        active
-                          ? 'bg-secondary text-on-secondary shadow-e1'
-                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
+                        connectedSegmentTone(active, 'secondary'),
                       )}
                     >
                       <Icon name={theme.icon} size={15} />

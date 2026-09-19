@@ -47,9 +47,15 @@ export const caseCreateSchema = z.object({
 
 export const caseUpdateSchema = caseCreateSchema.partial();
 
-/** Roll the diary forward: today's date becomes preDate, a new nextDate is set. */
+/** Roll the diary forward: the heard date becomes preDate, a new nextDate is set. */
 export const adjournSchema = z.object({
   nextDate: dateField,
+  /**
+   * The day the matter was actually before the court. The client sends it
+   * because the app is as likely to be opened that evening as in the
+   * courtroom, and the entry has to land on the right diary page either way.
+   */
+  heardOn: dateField,
   stage: z.enum(STAGE_IDS).optional(),
   note: z.string().trim().max(2000).optional(),
   purpose: optionalText(200),
@@ -64,9 +70,15 @@ const isoDay = z
 
 export const listQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
-  filter: z.enum(['all', 'today', 'upcoming', 'overdue', 'disposed', 'range']).default('all'),
+  filter: z
+    .enum(['all', 'today', 'upcoming', 'overdue', 'disposed', 'range', 'undated'])
+    .default('all'),
   stage: z.enum(STAGE_IDS).optional(),
-  /** Inclusive next-date window, used by `filter=range` for PDF exports. */
+  /**
+   * Inclusive window of diary days, used by `filter=range` for the diary
+   * screen and the PDF exports. It matches any day a matter occupies, not
+   * only its next date.
+   */
   from: isoDay,
   to: isoDay,
   page: z.coerce.number().int().min(1).default(1),

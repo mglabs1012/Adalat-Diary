@@ -6,6 +6,7 @@ import { caseUpdateSchema } from '@/lib/validation/case';
 import { fail, requireOwnerId, handleError, ok, unauthorized } from '@/lib/utils/api';
 import { serialize } from '@/lib/api/serialize';
 import { getCase } from '@/lib/data/cases';
+import { computeHearingDates } from '@/lib/data/hearingDates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,9 +41,28 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!body) return fail('Invalid request body.');
 
     const data = caseUpdateSchema.parse(body);
+
+    // Editing a date moves the matter to a different page of the diary, so the
+    // derived days are recomputed from the record as it will be after the
+    // patch — read first, merge, then write once.
+    const current = await CaseModel.findOne({ _id: id, ownerId })
+      .select('preDate nextDate history')
+      .lean()
+      .exec();
+    if (!current) return fail('Case not found.', 404);
+
     const doc = await CaseModel.findOneAndUpdate(
       { _id: id, ownerId },
-      { $set: data },
+      {
+        $set: {
+          ...data,
+          hearingDates: computeHearingDates({
+            preDate: 'preDate' in data ? data.preDate : current.preDate,
+            nextDate: 'nextDate' in data ? data.nextDate : current.nextDate,
+            history: current.history,
+          }),
+        },
+      },
       { new: true, runValidators: true },
     )
       .lean()

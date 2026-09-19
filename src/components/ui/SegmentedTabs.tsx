@@ -1,7 +1,11 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
-import { ConnectedSegmentTrack, connectedSegmentShape } from '@/components/ui/ConnectedSegments';
+import {
+  ConnectedSegmentTrack,
+  connectedSegmentShape,
+  connectedSegmentTone,
+} from '@/components/ui/ConnectedSegments';
 
 interface Segment<T extends string> {
   id: T;
@@ -33,9 +37,7 @@ export function SegmentedTabs<T extends string>({ segments, value, onChange }: S
             className={cn(
               'min-w-max flex-1 whitespace-nowrap px-space-md py-2 text-label-md transition-all',
               connectedSegmentShape(active, index, segments.length),
-              active
-                ? 'bg-primary text-on-primary shadow-e1'
-                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary',
+              connectedSegmentTone(active),
             )}
           >
             {s.label}

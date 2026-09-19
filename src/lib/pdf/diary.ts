@@ -1,4 +1,5 @@
-import type { CaseListItem, CaseRecord } from '@/types/case';
+import type { DiaryDayEntry, DiaryDayGroup } from '@/lib/data/diaryDays';
+import type { CaseRecord } from '@/types/case';
 import { getStage } from '@/lib/constants/stages';
 import { caseRef, causeTitle } from '@/lib/utils/case';
 import { formatDate, formatLongDate } from '@/lib/utils/date';
@@ -122,23 +123,35 @@ const tableTheme = {
     cellPadding: { top: 2.4, right: 2, bottom: 2.4, left: 2 },
   },
   alternateRowStyles: { fillColor: ZEBRA },
+  // A row never splits across a page. Without this a three-line cause title
+  // landing at the foot of a page leaves its last line stranded at the top of
+  // the next one, under a repeated header and with every other cell blank.
+  rowPageBreak: 'avoid' as const,
   margin: { top: CONTENT_TOP, bottom: 22, left: MARGIN, right: MARGIN },
 };
 
-/** Columns shared by every cause list. `showNext` is dropped in month tables,
- *  where the day heading above the table already states the date. */
-function columns(showNext: boolean) {
-  const base = [
+/**
+ * Columns shared by every cause list.
+ *
+ * A day's page carries both the matters listed for it and the matters that
+ * were heard on it and have since been adjourned, so the reader needs to know
+ * which is which: the status column says so, and both dates stay on the row
+ * so an adjournment reads at a glance.
+ */
+function columns() {
+  return [
     { header: '#', dataKey: 'index' },
-    { header: 'CRN', dataKey: 'crn' },
-    { header: 'Parties', dataKey: 'parties' },
+    // CRN and cause title share a column: a real CRN is one unbreakable
+    // 18-character token, and no column narrow enough to fit beside eight
+    // others can hold it without splitting it mid-number.
+    { header: 'Matter', dataKey: 'matter' },
     { header: 'Court', dataKey: 'court' },
     { header: 'Stage', dataKey: 'stage' },
+    { header: 'Status', dataKey: 'role' },
     { header: 'Prev. date', dataKey: 'preDate' },
+    { header: 'Next date', dataKey: 'nextDate' },
+    { header: 'Listed for', dataKey: 'purpose' },
   ];
-  if (showNext) base.push({ header: 'Next date', dataKey: 'nextDate' });
-  base.push({ header: 'Listed for', dataKey: 'purpose' });
-  return base;
 }
 
 /**
@@ -146,34 +159,52 @@ function columns(showNext: boolean) {
  * that so the 'auto' column keeps ~35mm — enough that "Cross examination"
  * wraps between words instead of being hyphenated mid-word.
  */
-function columnStyles(showNext: boolean) {
-  const styles: Record<string, Record<string, unknown>> = {
-    index: { cellWidth: 7, halign: 'center', textColor: MUTED },
-    crn: { cellWidth: showNext ? 25 : 27, fontStyle: 'bold', fontSize: 7.5 },
-    parties: { cellWidth: showNext ? 38 : 44 },
-    court: { cellWidth: showNext ? 28 : 32 },
-    stage: { cellWidth: showNext ? 18 : 20 },
-    preDate: { cellWidth: 17, halign: 'center' },
+function columnStyles() {
+  return {
+    index: { cellWidth: 6.5, halign: 'center', textColor: MUTED },
+    matter: { cellWidth: 52 },
+    court: { cellWidth: 24, fontSize: 7.5 },
+    // Wide enough for "Cross Examination" to break between its words rather
+    // than through the middle of one.
+    stage: { cellWidth: 23, fontSize: 7.5 },
+    role: { cellWidth: 13, halign: 'center', fontSize: 7, textColor: MUTED },
+    preDate: { cellWidth: 16, halign: 'center', fontSize: 7.5 },
+    nextDate: { cellWidth: 16, halign: 'center', fontStyle: 'bold', fontSize: 7.5 },
     purpose: { cellWidth: 'auto' },
-  };
-  if (showNext) styles.nextDate = { cellWidth: 17, halign: 'center', fontStyle: 'bold' };
-  return styles;
+  } as Record<string, Record<string, unknown>>;
 }
 
-function rows(cases: CaseListItem[], showNext: boolean) {
-  return cases.map((c, i) => {
-    const row: Record<string, string | number> = {
-      index: i + 1,
-      crn: c.crn || '—',
-      parties: causeTitle(c),
-      court: c.courtRoom ? `${c.court}\n${c.courtRoom}` : c.court,
-      stage: getStage(c.stage).label,
-      preDate: c.preDate ? formatDate(c.preDate) : '—',
-      purpose: c.purpose ?? '—',
-    };
-    if (showNext) row.nextDate = c.nextDate ? formatDate(c.nextDate) : '—';
-    return row;
-  });
+/**
+ * Court codes are single hyphenated tokens, and the longest of them —
+ * PISANGAN-GRAM-NYAYALAYA — is wider than any column that can sit beside
+ * seven others. autoTable only breaks on spaces, so it would split one
+ * through the middle of a word. Breaking at the hyphen nearest the centre
+ * keeps the code legible and the column narrow.
+ */
+function wrapCourt(code: string): string {
+  if (code.length <= 12) return code;
+  const hyphens = [...code.matchAll(/-/g)].map((m) => m.index ?? 0);
+  if (!hyphens.length) return code;
+
+  const middle = code.length / 2;
+  const at = hyphens.reduce(
+    (best, i) => (Math.abs(i - middle) < Math.abs(best - middle) ? i : best),
+    hyphens[0],
+  );
+  return `${code.slice(0, at + 1)}\n${code.slice(at + 1)}`;
+}
+
+function rows(entries: readonly DiaryDayEntry[]) {
+  return entries.map(({ record: c, role }, i) => ({
+    index: i + 1,
+    matter: `${c.crn || 'No CRN'}\n${causeTitle(c)}`,
+    court: c.courtRoom ? `${wrapCourt(c.court)}\n${c.courtRoom}` : wrapCourt(c.court),
+    stage: getStage(c.stage).label,
+    role: c.status === 'disposed' ? 'Disposed' : role === 'listed' ? 'Listed' : 'Heard',
+    preDate: c.preDate ? formatDate(c.preDate) : '—',
+    nextDate: c.nextDate ? formatDate(c.nextDate) : 'Awaited',
+    purpose: c.purpose ?? '—',
+  }));
 }
 
 function fileSafe(text: string) {
@@ -183,19 +214,20 @@ function fileSafe(text: string) {
 /* ── Day cause list ───────────────────────────────────────────────────────── */
 
 export async function buildDayPdf(
-  cases: CaseListItem[],
+  entries: readonly DiaryDayEntry[],
   date: Date,
   meta: PdfMeta,
 ): Promise<{ blob: Blob; filename: string }> {
   const { jsPDF, autoTable } = await loadPdf();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const cases = entries;
 
   autoTable(doc, {
     ...tableTheme,
     startY: CONTENT_TOP,
-    columns: columns(false),
-    body: rows(cases, false),
-    columnStyles: columnStyles(false),
+    columns: columns(),
+    body: rows(entries),
+    columnStyles: columnStyles(),
   });
 
   if (!cases.length) {
@@ -222,13 +254,6 @@ export async function buildDayPdf(
 
 /* ── Month diary ──────────────────────────────────────────────────────────── */
 
-export interface DayGroup {
-  /** yyyy-MM-dd */
-  key: string;
-  date: string;
-  cases: CaseListItem[];
-}
-
 const MONTH_FMT = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' });
 
 /**
@@ -236,14 +261,14 @@ const MONTH_FMT = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numer
  * makes a month readable. A single 200-row table would be useless.
  */
 export async function buildMonthPdf(
-  groups: DayGroup[],
+  groups: readonly DiaryDayGroup[],
   month: Date,
   meta: PdfMeta,
 ): Promise<{ blob: Blob; filename: string }> {
   const { jsPDF, autoTable } = await loadPdf();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  const total = groups.reduce((n, g) => n + g.cases.length, 0);
+  const total = groups.reduce((n, g) => n + g.entries.length, 0);
   let cursor = CONTENT_TOP;
 
   if (!groups.length) {
@@ -255,8 +280,9 @@ export async function buildMonthPdf(
 
   groups.forEach((group, i) => {
     const headingH = 9;
-    // Keep a day heading with at least its first row; never orphan it.
-    const needed = headingH + 18;
+    // Keep a day heading with its table header and at least one full row —
+    // a heading alone at the foot of a page is worse than a short page.
+    const needed = headingH + 26;
     if (i > 0 && cursor + needed > FOOTER_TOP - 6) {
       doc.addPage();
       cursor = CONTENT_TOP;
@@ -276,7 +302,7 @@ export async function buildMonthPdf(
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
     doc.text(
-      `${group.cases.length} matter${group.cases.length === 1 ? '' : 's'}`,
+      `${group.entries.length} matter${group.entries.length === 1 ? '' : 's'}`,
       PAGE.width - MARGIN - 3,
       cursor + 6,
       { align: 'right' },
@@ -287,9 +313,9 @@ export async function buildMonthPdf(
     autoTable(doc, {
       ...tableTheme,
       startY: cursor,
-      columns: columns(false),
-      body: rows(group.cases, false),
-      columnStyles: columnStyles(false),
+      columns: columns(),
+      body: rows(group.entries),
+      columnStyles: columnStyles(),
     });
 
     // autoTable records where it stopped, including any page it broke onto.

@@ -6,7 +6,15 @@ import { fetcher } from '@/lib/api/client';
 import { readStats, saveStats } from '@/lib/offline/cache';
 import type { DiaryStats } from '@/types/case';
 
-const ZERO: DiaryStats = { today: 0, tomorrow: 0, thisWeek: 0, active: 0, overdue: 0, disposed: 0 };
+const ZERO: DiaryStats = {
+  today: 0,
+  tomorrow: 0,
+  thisWeek: 0,
+  active: 0,
+  overdue: 0,
+  disposed: 0,
+  undated: 0,
+};
 
 export function useStats() {
   const { data, error, isLoading, mutate } = useSWR<DiaryStats>('/api/stats', fetcher, {

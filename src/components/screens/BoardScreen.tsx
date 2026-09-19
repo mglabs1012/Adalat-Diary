@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useCases } from '@/hooks/useCases';
 import { useStats } from '@/hooks/useStats';
 import { useDiaryPdf } from '@/hooks/useDiaryPdf';
-import { addDays, formatLongDate, toInputDate } from '@/lib/utils/date';
+import { groupByDiaryDay } from '@/lib/data/diaryDays';
+import { dayKeyFromToday, formatLongDate, todayKey } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { CaseCard } from '@/components/cases/CaseCard';
 import { useSession } from '@/components/layout/SessionProvider';
@@ -25,11 +27,12 @@ function greeting(): string {
 }
 
 /** One line telling the advocate what today actually demands. */
-function agenda(today: number, overdue: number): string {
-  if (!today && !overdue) return 'Nothing listed today. A clear board.';
+function agenda(today: number, overdue: number, undated: number): string {
   const parts: string[] = [];
-  if (today) parts.push(`${today} matter${today === 1 ? '' : 's'} listed`);
+  if (today) parts.push(`${today} matter${today === 1 ? '' : 's'} on today's page`);
   if (overdue) parts.push(`${overdue} past its date`);
+  if (undated) parts.push(`${undated} awaiting a date`);
+  if (!parts.length) return 'Nothing listed today. A clear board.';
   return parts.join(' · ');
 }
 
@@ -40,10 +43,18 @@ export function BoardScreen() {
   const { stats, isLoading: statsLoading } = useStats();
   const { cases: today, isLoading: todayLoading } = useCases({ filter: 'today', pageSize: 20 });
   const { cases: upcoming } = useCases({ filter: 'upcoming', pageSize: 5 });
+  const { cases: undated } = useCases({ filter: 'undated', pageSize: 5 });
 
-  const todayKey = toInputDate(new Date());
-  const tomorrowKey = toInputDate(addDays(new Date(), 1));
-  const weekEndKey = toInputDate(addDays(new Date(), 7));
+  const dayKey = todayKey();
+  const tomorrowKey = dayKeyFromToday(1);
+  const weekEndKey = dayKeyFromToday(7);
+
+  // Today's page in diary order: what is still to be called first, then what
+  // was heard this morning and has already been adjourned onward.
+  const todayEntries = useMemo(
+    () => groupByDiaryDay(today, { from: dayKey, to: dayKey })[0]?.entries ?? [],
+    [today, dayKey],
+  );
 
   const nextUp = upcoming.filter((c) => !today.some((t) => t.id === c.id)).slice(0, 4);
 
@@ -84,7 +95,7 @@ export function BoardScreen() {
                 {formatLongDate()}
               </h1>
               <p className="mt-space-xs text-body-md text-primary-fixed-dim">
-                {agenda(stats.today, stats.overdue)}
+                {agenda(stats.today, stats.overdue, stats.undated)}
               </p>
             </div>
 
@@ -102,7 +113,14 @@ export function BoardScreen() {
       </header>
 
       <div className="page">
-        <section className="relative z-10 -mt-space-lg grid grid-cols-2 gap-space-sm lg:mt-space-xl lg:grid-cols-4 lg:gap-space-base">
+        {/* Five counters need their own column count, or the last one hangs
+            off the end of a four-up grid. */}
+        <section
+          className={cn(
+            'relative z-10 -mt-space-lg grid grid-cols-2 gap-space-sm lg:mt-space-xl lg:gap-space-base',
+            stats.undated ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
+          )}
+        >
           {statsLoading ? (
             <>
               <StatSkeleton />
@@ -112,7 +130,13 @@ export function BoardScreen() {
             </>
           ) : (
             <>
-              <StatTile label="Listed today" value={stats.today} icon="courthouse" tone="amber" href="/cases?f=today" />
+              <StatTile
+                label="On today's page"
+                value={stats.today}
+                icon="courthouse"
+                tone="amber"
+                href={`/diary?date=${dayKey}`}
+              />
               <StatTile
                 label="Tomorrow"
                 value={stats.tomorrow}
@@ -125,7 +149,7 @@ export function BoardScreen() {
                 value={stats.thisWeek}
                 icon="diary"
                 tone="plain"
-                href={`/diary?from=${todayKey}&to=${weekEndKey}`}
+                href={`/diary?from=${dayKey}&to=${weekEndKey}`}
               />
               <StatTile
                 label="Date passed"
@@ -134,6 +158,17 @@ export function BoardScreen() {
                 tone={stats.overdue ? 'error' : 'plain'}
                 href="/cases?f=overdue"
               />
+              {/* Matters with no next date used to appear in no view at all. */}
+              {stats.undated ? (
+                <StatTile
+                  label="Date awaited"
+                  value={stats.undated}
+                  icon="note"
+                  tone="plain"
+                  href="/cases?f=undated"
+                  className="col-span-2 lg:col-span-1"
+                />
+              ) : null}
             </>
           )}
         </section>
@@ -155,13 +190,17 @@ export function BoardScreen() {
             </div>
             {todayLoading ? (
               <ListSkeleton rows={2} />
-            ) : today.length ? (
-              today.map((c) => <CaseCard key={c.id} record={c} />)
+            ) : todayEntries.length ? (
+              <div className="grid grid-cols-1 gap-space-md 2xl:grid-cols-2">
+                {todayEntries.map((entry) => (
+                  <CaseCard key={entry.record.id} record={entry.record} dayRole={entry.role} />
+                ))}
+              </div>
             ) : (
               <EmptyState
                 icon="check"
-                title="Nothing listed today"
-                body="No matter in your diary carries today's date. Enjoy the quiet board."
+                title="Nothing on today's page"
+                body="No matter was listed or heard today. Enjoy the quiet board."
                 actionLabel="Add a case"
                 actionHref="/cases/new"
               />
@@ -173,6 +212,23 @@ export function BoardScreen() {
               <section className="flex flex-col gap-space-md">
                 <SectionHeader title="Coming up" meta="All dates" href="/diary" />
                 {nextUp.map((c) => (
+                  <CaseCard key={c.id} record={c} compact />
+                ))}
+              </section>
+            ) : null}
+
+            {undated.length ? (
+              <section className="flex flex-col gap-space-md">
+                <SectionHeader
+                  title="Awaiting a date"
+                  meta={`All ${stats.undated}`}
+                  href="/cases?f=undated"
+                />
+                <p className="-mt-space-xs text-body-sm text-on-surface-variant">
+                  Open matters the court has not listed again. They still sit on the day they
+                  were last heard.
+                </p>
+                {undated.slice(0, 3).map((c) => (
                   <CaseCard key={c.id} record={c} compact />
                 ))}
               </section>
@@ -228,12 +284,14 @@ function StatTile({
   icon,
   tone,
   href,
+  className,
 }: {
   label: string;
   value: number;
   icon: IconName;
   tone: keyof typeof TILE_TONE;
   href: string;
+  className?: string;
 }) {
   return (
     <Link
@@ -241,6 +299,7 @@ function StatTile({
       className={cn(
         'press flex flex-col justify-between gap-space-xs rounded-md p-space-md shadow-e1 transition-shadow hover:shadow-e2 lg:p-space-base',
         TILE_TONE[tone],
+        className,
       )}
     >
       <span className="flex items-center justify-between">

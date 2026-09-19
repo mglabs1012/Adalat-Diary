@@ -31,6 +31,7 @@ function toListItem(record: CaseRecord): CaseListItem {
     stage: record.stage,
     preDate: record.preDate,
     nextDate: record.nextDate,
+    hearingDates: record.hearingDates,
     purpose: record.purpose,
     pinned: record.pinned,
     status: record.status,

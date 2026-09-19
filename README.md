@@ -49,6 +49,7 @@ cannot reach the database. Check `/api/health` to see the connection state at an
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint (flat config) |
 | `npm run migrate:crn` | One-off: make the CRN index partial (pre-0.5 databases only) |
+| `npm run migrate:dates` | One-off: derive `hearingDates` for records saved before 0.9 (safe to re-run) |
 | `npm run csv:prompt` | Regenerate `docs/csv-import-prompt.md` from the live court and stage lists |
 | `node scripts/generate-icons.mjs` | Regenerate the PWA icon set |
 

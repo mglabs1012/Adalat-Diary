@@ -6,11 +6,12 @@ import { casesApi } from '@/lib/api/client';
 import { enqueue } from '@/lib/offline/outbox';
 import { STAGES } from '@/lib/constants/stages';
 import { PURPOSE_SUGGESTIONS } from '@/lib/constants/courts';
-import { addDays, formatDate, toInputDate } from '@/lib/utils/date';
+import { addDays, formatDate, todayKey, toInputDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { revalidateDiary, updateCachedCase } from '@/hooks/useCases';
 import { useOnline } from '@/hooks/useOnline';
 import { toast } from '@/hooks/useToast';
+import { connectedSegmentTone } from '@/components/ui/ConnectedSegments';
 import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
@@ -31,13 +32,21 @@ const QUICK_JUMPS = [
 ];
 
 /**
- * Records the outcome of today's listing. This is performed standing in a
- * corridor, so the date presets come before the picker and the whole thing
- * works with the radio off.
+ * Records the outcome of a listing.
+ *
+ * The day it was heard is a field, not an assumption. This is as often filled
+ * in that evening, or the next morning, as it is standing in the corridor —
+ * and the entry has to land on the day the court actually took the matter up,
+ * not on whichever day the app happened to be open. It defaults to the date
+ * the matter was listed for, which is right nearly every time.
+ *
+ * The presets still come before the picker, and the whole thing works with
+ * the radio off.
  */
 export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProps) {
   const online = useOnline();
-  const [nextDate, setNextDate] = useState(toInputDate(addDays(new Date(), 14)));
+  const [heardOn, setHeardOn] = useState(toInputDate(record.nextDate) || todayKey());
+  const [nextDate, setNextDate] = useState(toInputDate(addDays(record.nextDate ?? new Date(), 14)));
   const [stage, setStage] = useState<StageId>(record.stage);
   const [purpose, setPurpose] = useState(record.purpose ?? '');
   const [note, setNote] = useState('');
@@ -51,8 +60,13 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
       return;
     }
 
+    if (!heardOn) {
+      toast('Pick the date this matter was heard', 'error');
+      return;
+    }
+
     setSaving(true);
-    const payload = { nextDate: disposed ? null : nextDate, stage, purpose, note, disposed };
+    const payload = { nextDate: disposed ? null : nextDate, heardOn, stage, purpose, note, disposed };
     let saved: CaseRecord | undefined;
 
     try {
@@ -88,22 +102,37 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
       size="lg"
     >
       <div className="flex flex-col gap-space-lg">
-        <div className="flex items-center justify-between gap-space-md rounded-md bg-surface-container-low p-space-md">
-          <div className="min-w-0">
-            <p className="text-label-sm uppercase tracking-wide text-on-surface-variant">
-              Heard on
-            </p>
-            <p className="tnum text-label-lg text-on-surface">{formatDate(record.nextDate)}</p>
+        <div className="flex flex-col gap-space-md rounded-md bg-surface-container-low p-space-md">
+          <div className="flex items-center justify-between gap-space-md">
+            <div className="min-w-0">
+              <p className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+                Heard on
+              </p>
+              <p className="tnum text-label-lg text-on-surface">
+                {heardOn ? formatDate(heardOn) : 'Pick a date'}
+              </p>
+            </div>
+            <Icon name="arrowRight" size={18} className="shrink-0 text-on-surface-variant" />
+            <div className="min-w-0 text-right">
+              <p className="text-label-sm uppercase tracking-wide text-on-surface-variant">
+                Becomes
+              </p>
+              <p className="tnum text-label-lg text-primary">
+                {disposed ? 'Disposed' : formatDate(nextDate || null)}
+              </p>
+            </div>
           </div>
-          <Icon name="arrowRight" size={18} className="shrink-0 text-on-surface-variant" />
-          <div className="min-w-0 text-right">
-            <p className="text-label-sm uppercase tracking-wide text-on-surface-variant">
-              Becomes
-            </p>
-            <p className="tnum text-label-lg text-primary">
-              {disposed ? 'Disposed' : formatDate(nextDate || null)}
-            </p>
-          </div>
+
+          {/* Editable, because the app is as often opened that evening as in
+              court, and this is the date the entry files itself under. */}
+          <Field
+            label="Date it was actually heard"
+            hint="This is the diary page the matter is recorded on"
+          >
+            {(ids) => (
+              <DatePicker ids={ids} value={heardOn} onChange={setHeardOn} max={nextDate || undefined} />
+            )}
+          </Field>
         </div>
 
         {!disposed ? (
@@ -112,7 +141,9 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
               <span className="text-label-md text-on-surface-variant">Adjourn by</span>
               <div className="grid grid-cols-2 gap-space-sm sm:grid-cols-4">
                 {QUICK_JUMPS.map((j) => {
-                  const value = toInputDate(addDays(new Date(), j.days));
+                  // Counted from the hearing, not from now: "two weeks" means
+                  // two weeks from the day the court gave the date.
+                  const value = toInputDate(addDays(heardOn || new Date(), j.days));
                   const active = value === nextDate;
                   return (
                     <button
@@ -122,9 +153,7 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
                       aria-pressed={active}
                       className={cn(
                         'press min-h-11 whitespace-nowrap rounded-full px-space-md text-label-md transition-colors',
-                        active
-                          ? 'bg-primary text-on-primary'
-                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high',
+                        connectedSegmentTone(active),
                       )}
                     >
                       {j.label}
@@ -137,7 +166,12 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
             <div className="grid grid-cols-1 gap-space-base sm:grid-cols-2">
               <Field label="Next date of hearing" required>
                 {(ids) => (
-                  <DatePicker ids={ids} value={nextDate} onChange={setNextDate} />
+                  <DatePicker
+                    ids={ids}
+                    value={nextDate}
+                    min={heardOn || undefined}
+                    onChange={setNextDate}
+                  />
                 )}
               </Field>
 
@@ -174,7 +208,7 @@ export function AdjournSheet({ record, open, onClose, onDone }: AdjournSheetProp
           </>
         ) : null}
 
-        <Field label="What happened today" hint="Goes into the procedural history">
+        <Field label="What happened that day" hint="Goes into the procedural history">
           {(ids) => (
             <TextArea
               ids={ids}

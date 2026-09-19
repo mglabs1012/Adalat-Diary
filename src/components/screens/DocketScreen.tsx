@@ -22,6 +22,9 @@ const FILTERS = [
   { id: 'today', label: 'Today' },
   { id: 'upcoming', label: 'Upcoming' },
   { id: 'overdue', label: 'Passed' },
+  // Open matters with no next date. Without a filter of their own they can
+  // only be found by scrolling the whole docket.
+  { id: 'undated', label: 'No date' },
   { id: 'disposed', label: 'Disposed' },
 ] as const satisfies readonly { id: CaseFilter; label: string }[];
 
@@ -56,7 +59,7 @@ export function DocketScreen() {
   });
 
   const counts = useMemo<Partial<Record<CaseFilter, number>>>(
-    () => ({ today: stats.today, overdue: stats.overdue }),
+    () => ({ today: stats.today, overdue: stats.overdue, undated: stats.undated }),
     [stats],
   );
   const segments = FILTERS.map((f) => ({ ...f, count: counts[f.id] }));
@@ -136,8 +139,8 @@ export function DocketScreen() {
           <ListSkeleton rows={4} />
         ) : cases.length ? (
           <>
-            {/* One column on a phone; two once there is room to read both. */}
-            <div className="grid grid-cols-1 gap-space-md xl:grid-cols-2">
+            {/* One column on a phone, two on a laptop, three on a wide desk. */}
+            <div className="grid grid-cols-1 gap-space-md xl:grid-cols-2 2xl:grid-cols-3">
               {cases.map((c) => (
                 <CaseCard key={c.id} record={c} />
               ))}
@@ -166,11 +169,19 @@ export function DocketScreen() {
         ) : (
           <EmptyState
             icon={q ? 'search' : 'docket'}
-            title={q ? 'No matching case' : 'Your docket is empty'}
+            title={
+              q
+                ? 'No matching case'
+                : filter === 'undated'
+                  ? 'Every matter has a next date'
+                  : 'Your docket is empty'
+            }
             body={
               q
                 ? 'Try the CRN, a party name, or the court instead.'
-                : 'Add your first case and its next date will show up on the board.'
+                : filter === 'undated'
+                  ? 'Nothing is waiting on the court for a date.'
+                  : 'Add your first case and it will appear on the day you enter for it.'
             }
             actionLabel={q ? undefined : 'Add a case'}
             actionHref={q ? undefined : '/cases/new'}

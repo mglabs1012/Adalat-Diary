@@ -7,7 +7,7 @@ import { ApiError, casesApi } from '@/lib/api/client';
 import { enqueue } from '@/lib/offline/outbox';
 import { COURT_GROUPS, PURPOSE_SUGGESTIONS, isKnownCourt } from '@/lib/constants/courts';
 import { DEFAULT_STAGE, STAGES } from '@/lib/constants/stages';
-import { toInputDate } from '@/lib/utils/date';
+import { formatDate, toInputDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
 import { revalidateDiary, updateCachedCase } from '@/hooks/useCases';
 import { useOnline } from '@/hooks/useOnline';
@@ -40,6 +40,24 @@ const SIDES = [
 ];
 
 const NOTES_MAX = 5000;
+
+/**
+ * Plain English for where this record will show up.
+ *
+ * Both dates put the matter on a page of the diary, and neither is required —
+ * so the form has to say which pages it will land on, including the case
+ * where it lands on none.
+ */
+function diaryPlacement(preDate: string, nextDate: string): string {
+  if (preDate && nextDate) {
+    return `Appears on ${formatDate(preDate)} as heard, and on ${formatDate(nextDate)} as listed.`;
+  }
+  if (nextDate) return `Appears in the diary on ${formatDate(nextDate)}.`;
+  if (preDate) {
+    return `Appears in the diary on ${formatDate(preDate)}, and under "Awaiting a next date" until the court gives one.`;
+  }
+  return 'With neither date this stays in the docket only — it will not appear on any day of the diary.';
+}
 
 const STAGE_OPTIONS = STAGES.map((s) => ({ value: s.id, label: s.label }));
 
@@ -329,8 +347,12 @@ export function CaseForm({ initial }: CaseFormProps) {
           </Field>
 
           <FormRow>
-            <div className="grid grid-cols-2 gap-space-sm">
-              <Field label="Previous date" error={errors.preDate} hint="The last hearing">
+            <div className="grid grid-cols-1 gap-space-sm sm:grid-cols-2">
+              <Field
+                label="Previous date"
+                error={errors.preDate}
+                hint="The day it was last before the court"
+              >
                 {(ids) => (
                   <DatePicker
                     ids={ids}
@@ -344,8 +366,16 @@ export function CaseForm({ initial }: CaseFormProps) {
               <Field
                 label="Next date"
                 error={errors.nextDate}
-                hint="Countdown target"
-                meta={<span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-success" title="Board alert active" />}
+                hint="Leave it empty if the court has not given one"
+                meta={
+                  <span
+                    className={cn(
+                      'mt-0.5 h-2.5 w-2.5 rounded-full',
+                      form.nextDate ? 'bg-success' : 'bg-outline/50',
+                    )}
+                    title={form.nextDate ? 'Board alert active' : 'No date — no countdown'}
+                  />
+                }
               >
                 {(ids) => (
                   <DatePicker
@@ -357,6 +387,14 @@ export function CaseForm({ initial }: CaseFormProps) {
                 )}
               </Field>
             </div>
+
+            {/* A record is only useful if the advocate knows which page of the
+                diary it will be on. Say so, rather than leaving them to find
+                out by looking. */}
+            <p className="mt-space-sm flex items-start gap-space-xs rounded-md bg-surface-container-low px-space-md py-space-sm text-label-md text-on-surface-variant">
+              <Icon name="diary" size={15} className="mt-0.5 shrink-0 text-secondary" />
+              <span>{diaryPlacement(form.preDate, form.nextDate)}</span>
+            </p>
           </FormRow>
         </FormGrid>
       </FormSection>

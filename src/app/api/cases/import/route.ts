@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db/mongodb';
 import { CaseModel } from '@/lib/models/Case';
 import { caseCreateSchema } from '@/lib/validation/case';
+import { computeHearingDates } from '@/lib/data/hearingDates';
 import { fail, handleError, ok, requireOwnerId, unauthorized } from '@/lib/utils/api';
 import { logger } from '@/lib/utils/logger';
 
@@ -84,20 +85,23 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      // Most imported rows carry a previous date and no next date — a
+      // register is a record of what has happened. Deriving the diary days
+      // here is what puts those rows on their own day's page instead of
+      // nowhere at all.
+      const history = data.preDate
+        ? [{ date: data.preDate, stage: data.stage, note: 'Imported', recordedAt: new Date() }]
+        : [];
+      const hearingDates = computeHearingDates({ ...data, history });
+
       if (existingId) {
-        operations.push({ updateOne: { filter: { _id: existingId }, update: { $set: data } } });
+        operations.push({
+          updateOne: { filter: { _id: existingId }, update: { $set: { ...data, hearingDates } } },
+        });
         updated.push(line);
       } else {
         operations.push({
-          insertOne: {
-            document: {
-              ...data,
-              ownerId,
-              history: data.preDate
-                ? [{ date: data.preDate, stage: data.stage, note: 'Imported', recordedAt: new Date() }]
-                : [],
-            },
-          },
+          insertOne: { document: { ...data, ownerId, history, hearingDates } },
         });
         imported.push(line);
       }
