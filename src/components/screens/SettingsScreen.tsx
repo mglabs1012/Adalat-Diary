@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { casesApi } from '@/lib/api/client';
+import { fetchWithTimeout } from '@/lib/browser/fetch';
+import { clearSessionCache } from '@/lib/browser/session-cache';
 import { clearOutbox, listOutbox, type OutboxItem } from '@/lib/offline/outbox';
 import { formatDate } from '@/lib/utils/date';
 import { cn } from '@/lib/utils/cn';
@@ -36,11 +38,15 @@ export function SettingsScreen() {
   const [queued, setQueued] = useState<OutboxItem[]>([]);
   const [csvBusy, setCsvBusy] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
   const [exporting, setExportOpen] = useState(false);
   const [importing, setImportOpen] = useState(false);
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
 
-  const refresh = useCallback(async () => setQueued(await listOutbox()), []);
+  const refresh = useCallback(async () => {
+    try { setQueued(await listOutbox()); } catch { /* Storage is optional in private mode. */ }
+  }, []);
   useEffect(() => void refresh(), [refresh]);
 
   async function exportCsv() {
@@ -77,11 +83,18 @@ export function SettingsScreen() {
   }
 
   async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError('');
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } finally {
+      const response = await fetchWithTimeout('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Could not sign out. Please try again.');
+      await clearSessionCache();
       // Hard navigation so every cached server component is discarded.
       window.location.replace('/login');
+    } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : 'Could not sign out. Check your connection and retry.');
+      setSigningOut(false);
     }
   }
 
@@ -93,7 +106,7 @@ export function SettingsScreen() {
 
       <main className="page flex flex-1 flex-col pb-nav pt-appbar">
         <div className="mx-auto flex w-full max-w-screen-sm flex-col gap-space-md lg:max-w-[48rem]">
-          <ProfileCard onSignOut={() => setConfirmSignOut(true)} />
+          <ProfileCard onSignOut={() => { setSignOutError(''); setConfirmSignOut(true); }} />
 
           <section className="card flex flex-col rounded-xl p-space-lg shadow-e2">
             <Header icon="contrast" text="Appearance" detail={appearanceName} />
@@ -258,7 +271,8 @@ export function SettingsScreen() {
             You will need your username and password to get back in. Anything still waiting to
             sync stays on this device.
           </p>
-          <div className="flex gap-space-sm">
+          {signOutError ? <p role="alert" className="text-body-sm text-error">{signOutError}</p> : null}
+          <div className="grid grid-cols-1 gap-space-sm sm:grid-cols-2">
             <Button
               variant="secondary"
               size="lg"
@@ -267,8 +281,8 @@ export function SettingsScreen() {
             >
               Stay signed in
             </Button>
-            <Button variant="danger" size="lg" className="flex-1" icon="logout" onClick={signOut}>
-              Sign out
+            <Button variant="danger" size="lg" className="w-full" icon="logout" loading={signingOut} onClick={signOut}>
+              {signingOut ? 'Signing out…' : 'Sign out'}
             </Button>
           </div>
         </div>

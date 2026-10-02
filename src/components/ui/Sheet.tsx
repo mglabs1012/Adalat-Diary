@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
 import { Icon } from './Icon';
 
@@ -21,12 +22,51 @@ interface SheetProps {
  */
 export function Sheet({ open, title, description, onClose, size = 'md', children }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  const [mounted, setMounted] = useState(false);
+  const [viewport, setViewport] = useState<CSSProperties>({});
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!open) return;
+    const visibleViewport = window.visualViewport;
+    const measure = () => setViewport({
+      top: visibleViewport?.offsetTop ?? 0,
+      height: visibleViewport?.height ?? window.innerHeight,
+    });
+    measure();
+    window.addEventListener('resize', measure);
+    visibleViewport?.addEventListener('resize', measure);
+    visibleViewport?.addEventListener('scroll', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      visibleViewport?.removeEventListener('resize', measure);
+      visibleViewport?.removeEventListener('scroll', measure);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !mounted) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close.current();
+      if (e.key !== 'Tab') return;
+      const controls = panel.current?.querySelectorAll<HTMLElement>(
+        'input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), [href], [tabindex="0"]',
+      );
+      if (!controls?.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
 
@@ -42,13 +82,16 @@ export function Sheet({ open, title, description, onClose, size = 'md', children
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = previous;
+      previouslyFocused?.focus({ preventScroll: true });
     };
-  }, [open, onClose]);
+  }, [open, mounted]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end lg:items-center lg:justify-center lg:p-space-2xl">
+  // A transformed route container is a containing block for fixed children.
+  // Portal to the body so scrolling a long page cannot move the dialog away.
+  return createPortal(
+    <div style={viewport} className="sheet-overlay fixed inset-x-0 top-0 z-[60] flex h-full flex-col justify-end lg:items-center lg:justify-center lg:p-space-2xl">
       <button
         className="scrim absolute inset-0 animate-fade-in"
         aria-label="Close"
@@ -58,10 +101,11 @@ export function Sheet({ open, title, description, onClose, size = 'md', children
       <div
         ref={panel}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative flex max-h-[88vh] w-full animate-sheet-up flex-col overflow-hidden rounded-t-xl bg-surface-container-lowest pb-safe shadow-e3',
+          'relative flex max-h-[calc(100%_-_0.75rem)] w-full animate-sheet-up flex-col overflow-hidden rounded-t-xl bg-surface-container-lowest pb-safe shadow-e3',
           'lg:max-h-[84vh] lg:animate-rise lg:rounded-xl lg:pb-0',
           size === 'lg' ? 'lg:max-w-2xl' : 'lg:max-w-lg',
         )}
@@ -85,8 +129,9 @@ export function Sheet({ open, title, description, onClose, size = 'md', children
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-space-lg py-space-lg">{children}</div>
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-space-lg py-space-lg">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '@/lib/api/client';
+import { fetchWithTimeout } from '@/lib/browser/fetch';
+import { clearSessionCache } from '@/lib/browser/session-cache';
 import { checkLogin, checkSignup, normaliseUsername } from '@/lib/validation/credentials';
 import { toast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/Button';
@@ -72,7 +74,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     setErrors({});
 
     try {
-      const res = await fetch(copy.endpoint, {
+      const res = await fetchWithTimeout(copy.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
@@ -83,12 +85,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
         throw new ApiError(body?.error ?? 'Something went wrong.', res.status, body?.issues);
       }
 
+      const session = await fetchWithTimeout('/api/auth/session');
+      if (!session.ok) {
+        throw new Error('Your browser could not keep you signed in. Open the HTTPS site in Safari or Chrome and allow cookies. If you just created an account, use Sign in to retry.');
+      }
+      await clearSessionCache();
+
       toast(mode === 'signup' ? 'Chamber created' : 'Signed in', 'success');
 
       // Full navigation, not router.push: the session cookie must reach the
       // server layout before the first authenticated screen renders.
       const next = params.get('next');
-      window.location.replace(next && next.startsWith('/') ? next : '/');
+      window.location.replace(next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') ? next : '/');
     } catch (err) {
       if (err instanceof ApiError && err.issues?.length) {
         const next: Errors = {};
